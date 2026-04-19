@@ -1,0 +1,53 @@
+name: Aktualizace maximálních cen paliv (MF ČR)
+
+on:
+  schedule:
+    # Po–Pá ve 12:30 UTC = 14:30 CET (zimní čas) / 14:30 CEST (letní čas)
+    # MF ČR vydává ceny kolem 14:00 CET, spouštíme 30 minut po vydání
+    - cron: "30 12 * * 1-5"
+  # Ruční spuštění z GitHub UI (záložka Actions → Run workflow)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repozitáře
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Nastavení Pythonu 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Instalace Playwright (Python balíček)
+        run: |
+          pip install --upgrade pip
+          pip install playwright
+
+      - name: Instalace Chromium + systémových závislostí
+        run: playwright install chromium --with-deps
+
+      - name: Stažení cen z MF ČR
+        run: python scripts/fetch_prices.py
+
+      - name: Commit a push aktualizovaných dat
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add data/prices.json
+          if git diff --staged --quiet; then
+            echo "Žádné změny v datech — commit přeskočen."
+          else
+            git commit -m "data: max. ceny paliv MF ČR $(date -u +%Y-%m-%d)"
+            git push
+            echo "✓ data/prices.json aktualizováno a pushnuté."
+          fi
