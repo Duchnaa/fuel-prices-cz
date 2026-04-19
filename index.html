@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Aktuální ceny pohonných hmot v České republice – Natural 95, Nafta, Natural 98, LPG. Vývoj cen za posledních 30 dní." />
+  <meta name="theme-color" content="#0d1117" />
+  <title>Ceny paliv v ČR</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <!-- Government cap banner (hidden by default, shown via JS) -->
+  <div id="gov-cap-banner" class="gov-banner hidden" role="alert">
+    <span class="banner-icon">⚠️</span>
+    <span id="gov-cap-text"></span>
+  </div>
+
+  <header class="site-header">
+    <div class="header-flag">
+      <span class="flag-blue"></span>
+      <span class="flag-red"></span>
+    </div>
+    <div class="header-content">
+      <h1>
+        <span class="header-icon">⛽</span>
+        Ceny paliv v ČR
+      </h1>
+      <p class="header-subtitle">Průměrné maloobchodní ceny pohonných hmot</p>
+    </div>
+    <div class="header-meta">
+      <div class="update-badge">
+        <span class="pulse-dot"></span>
+        <span>Aktualizováno: <strong id="last-updated">—</strong></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Loading state -->
+    <div id="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>Načítám data…</p>
+    </div>
+
+    <!-- Error state -->
+    <div id="error" class="error-state hidden">
+      <p>⚠️ Nepodařilo se načíst data. Zkuste obnovit stránku.</p>
+    </div>
+
+    <!-- Main content (hidden until data loads) -->
+    <div id="main-content" class="hidden">
+
+      <!-- Price cards -->
+      <section class="cards-section" aria-label="Aktuální ceny paliv">
+        <div class="cards-grid">
+          <div class="fuel-card" id="card-natural95">
+            <div class="card-header">
+              <div class="fuel-icon natural95-icon">⛽</div>
+              <div class="fuel-meta">
+                <h2 class="fuel-name">Natural 95</h2>
+                <span class="fuel-tag">BA 95</span>
+              </div>
+            </div>
+            <div class="card-price">
+              <span class="price-value" id="price-natural95">—</span>
+              <span class="price-unit">Kč/l</span>
+            </div>
+            <div class="card-trend" id="trend-natural95"></div>
+          </div>
+
+          <div class="fuel-card" id="card-diesel">
+            <div class="card-header">
+              <div class="fuel-icon diesel-icon">⛽</div>
+              <div class="fuel-meta">
+                <h2 class="fuel-name">Nafta</h2>
+                <span class="fuel-tag">Diesel</span>
+              </div>
+            </div>
+            <div class="card-price">
+              <span class="price-value" id="price-diesel">—</span>
+              <span class="price-unit">Kč/l</span>
+            </div>
+            <div class="card-trend" id="trend-diesel"></div>
+          </div>
+
+          <div class="fuel-card" id="card-natural98">
+            <div class="card-header">
+              <div class="fuel-icon natural98-icon">⛽</div>
+              <div class="fuel-meta">
+                <h2 class="fuel-name">Natural 98</h2>
+                <span class="fuel-tag">BA 98 Premium</span>
+              </div>
+            </div>
+            <div class="card-price">
+              <span class="price-value" id="price-natural98">—</span>
+              <span class="price-unit">Kč/l</span>
+            </div>
+            <div class="card-trend" id="trend-natural98"></div>
+          </div>
+
+          <div class="fuel-card" id="card-lpg">
+            <div class="card-header">
+              <div class="fuel-icon lpg-icon">🔵</div>
+              <div class="fuel-meta">
+                <h2 class="fuel-name">LPG</h2>
+                <span class="fuel-tag">Autopl. plyn</span>
+              </div>
+            </div>
+            <div class="card-price">
+              <span class="price-value" id="price-lpg">—</span>
+              <span class="price-unit">Kč/l</span>
+            </div>
+            <div class="card-trend" id="trend-lpg"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Stats row -->
+      <section class="stats-section" aria-label="Statistiky">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">Nejlevnější palivo</span>
+            <span class="stat-value" id="stat-cheapest">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Nejdražší palivo</span>
+            <span class="stat-value" id="stat-most-expensive">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Průměr (N95 + Nafta)</span>
+            <span class="stat-value" id="stat-average">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Změna N95 za 7 dní</span>
+            <span class="stat-value" id="stat-week-change">—</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Chart -->
+      <section class="chart-section">
+        <div class="chart-header">
+          <h2 class="section-title">Vývoj cen – posledních 30 dní</h2>
+          <div class="chart-legend" id="chart-legend"></div>
+        </div>
+        <div class="chart-container">
+          <canvas id="priceChart" aria-label="Graf vývoje cen paliv za posledních 30 dní" role="img"></canvas>
+        </div>
+        <div class="chart-filters">
+          <button class="filter-btn active" data-fuel="all">Vše</button>
+          <button class="filter-btn" data-fuel="natural95">Natural 95</button>
+          <button class="filter-btn" data-fuel="diesel">Nafta</button>
+          <button class="filter-btn" data-fuel="natural98">Natural 98</button>
+          <button class="filter-btn" data-fuel="lpg">LPG</button>
+        </div>
+      </section>
+
+    </div><!-- /#main-content -->
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-content">
+      <p>Data jsou průměrné maloobchodní ceny v ČR. Zdroj: CCS, kurzy.cz</p>
+      <p class="footer-note">Aktualizace probíhá automaticky každý den v 8:00 UTC přes GitHub Actions.</p>
+    </div>
+  </footer>
+</body>
+</html>

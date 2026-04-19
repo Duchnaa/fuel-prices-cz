@@ -1,0 +1,47 @@
+{
+  "last_updated": "2026-04-19T08:00:00",
+  "current": {
+    "natural95": 37.20,
+    "diesel": 36.10,
+    "natural98": 40.50,
+    "lpg": 19.20
+  },
+  "history": [
+    {"date": "2026-03-21", "natural95": 38.10, "diesel": 37.00, "natural98": 41.50, "lpg": 19.60},
+    {"date": "2026-03-22", "natural95": 38.00, "diesel": 36.90, "natural98": 41.40, "lpg": 19.60},
+    {"date": "2026-03-23", "natural95": 37.90, "diesel": 36.80, "natural98": 41.30, "lpg": 19.50},
+    {"date": "2026-03-24", "natural95": 37.85, "diesel": 36.75, "natural98": 41.20, "lpg": 19.50},
+    {"date": "2026-03-25", "natural95": 37.70, "diesel": 36.60, "natural98": 41.10, "lpg": 19.40},
+    {"date": "2026-03-26", "natural95": 37.80, "diesel": 36.70, "natural98": 41.20, "lpg": 19.40},
+    {"date": "2026-03-27", "natural95": 37.90, "diesel": 36.80, "natural98": 41.30, "lpg": 19.50},
+    {"date": "2026-03-28", "natural95": 37.75, "diesel": 36.65, "natural98": 41.15, "lpg": 19.40},
+    {"date": "2026-03-29", "natural95": 37.60, "diesel": 36.50, "natural98": 41.00, "lpg": 19.30},
+    {"date": "2026-03-30", "natural95": 37.50, "diesel": 36.40, "natural98": 40.90, "lpg": 19.30},
+    {"date": "2026-03-31", "natural95": 37.40, "diesel": 36.30, "natural98": 40.80, "lpg": 19.20},
+    {"date": "2026-04-01", "natural95": 37.30, "diesel": 36.20, "natural98": 40.70, "lpg": 19.20},
+    {"date": "2026-04-02", "natural95": 37.10, "diesel": 36.00, "natural98": 40.50, "lpg": 19.10},
+    {"date": "2026-04-03", "natural95": 36.90, "diesel": 35.80, "natural98": 40.30, "lpg": 19.00},
+    {"date": "2026-04-04", "natural95": 36.80, "diesel": 35.70, "natural98": 40.20, "lpg": 19.00},
+    {"date": "2026-04-05", "natural95": 36.70, "diesel": 35.60, "natural98": 40.10, "lpg": 18.90},
+    {"date": "2026-04-06", "natural95": 36.60, "diesel": 35.50, "natural98": 40.00, "lpg": 18.90},
+    {"date": "2026-04-07", "natural95": 36.50, "diesel": 35.40, "natural98": 39.90, "lpg": 18.80},
+    {"date": "2026-04-08", "natural95": 36.40, "diesel": 35.30, "natural98": 39.80, "lpg": 18.80},
+    {"date": "2026-04-09", "natural95": 36.50, "diesel": 35.40, "natural98": 39.90, "lpg": 18.90},
+    {"date": "2026-04-10", "natural95": 36.60, "diesel": 35.50, "natural98": 40.00, "lpg": 19.00},
+    {"date": "2026-04-11", "natural95": 36.70, "diesel": 35.60, "natural98": 40.10, "lpg": 19.00},
+    {"date": "2026-04-12", "natural95": 36.80, "diesel": 35.70, "natural98": 40.20, "lpg": 19.10},
+    {"date": "2026-04-13", "natural95": 36.90, "diesel": 35.80, "natural98": 40.30, "lpg": 19.10},
+    {"date": "2026-04-14", "natural95": 37.00, "diesel": 35.90, "natural98": 40.40, "lpg": 19.20},
+    {"date": "2026-04-15", "natural95": 37.10, "diesel": 36.00, "natural98": 40.50, "lpg": 19.20},
+    {"date": "2026-04-16", "natural95": 37.20, "diesel": 36.10, "natural98": 40.60, "lpg": 19.30},
+    {"date": "2026-04-17", "natural95": 37.30, "diesel": 36.20, "natural98": 40.70, "lpg": 19.30},
+    {"date": "2026-04-18", "natural95": 37.40, "diesel": 36.20, "natural98": 40.80, "lpg": 19.20},
+    {"date": "2026-04-19", "natural95": 37.20, "diesel": 36.10, "natural98": 40.50, "lpg": 19.20}
+  ],
+  "government_cap": {
+    "active": false,
+    "cap_price_natural95": null,
+    "cap_price_diesel": null,
+    "info": ""
+  }
+}

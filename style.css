@@ -1,0 +1,470 @@
+/* =========================================================
+   Ceny paliv v ČR — stylesheet
+   Dark mode, Czech tricolor accents
+   ========================================================= */
+
+/* --- Custom properties --- */
+:root {
+  --blue:        #003087;
+  --blue-light:  #1a4ba0;
+  --blue-glow:   rgba(0, 48, 135, 0.35);
+  --red:         #D7141A;
+  --red-light:   #e83840;
+  --red-glow:    rgba(215, 20, 26, 0.3);
+  --white:       #ffffff;
+
+  --bg:          #0d1117;
+  --bg-card:     #161b22;
+  --bg-card2:    #1c2230;
+  --bg-hover:    #21262d;
+  --border:      rgba(255,255,255,0.08);
+  --border2:     rgba(255,255,255,0.12);
+
+  --text:        #e6edf3;
+  --text-muted:  #8b949e;
+  --text-dim:    #6e7681;
+
+  --green:       #3fb950;
+  --green-glow:  rgba(63, 185, 80, 0.25);
+  --orange:      #f0883e;
+
+  --n95-color:   #1a6ed8;
+  --diesel-color:#f0883e;
+  --n98-color:   #8957e5;
+  --lpg-color:   #3fb950;
+
+  --radius-sm:   6px;
+  --radius-md:   12px;
+  --radius-lg:   20px;
+
+  --shadow-card: 0 4px 24px rgba(0,0,0,0.4);
+  --shadow-glow-blue: 0 0 20px var(--blue-glow);
+}
+
+/* --- Reset & base --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; scroll-behavior: smooth; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Government cap banner --- */
+.gov-banner {
+  background: linear-gradient(90deg, #7c2d12, #92400e);
+  border-bottom: 2px solid var(--orange);
+  padding: 10px 20px;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.gov-banner.hidden { display: none; }
+.banner-icon { font-size: 1.1rem; }
+
+/* --- Header --- */
+.site-header {
+  position: relative;
+  background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+  border-bottom: 1px solid var(--border2);
+  padding: 0 24px 0;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-height: 80px;
+  overflow: hidden;
+}
+
+.site-header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--blue) 33.3%, var(--white) 33.3% 66.6%, var(--red) 66.6%);
+}
+
+.site-header::after {
+  content: '';
+  position: absolute;
+  bottom: -60px; right: -60px;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, var(--blue-glow) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.header-flag {
+  display: flex;
+  flex-direction: column;
+  width: 4px;
+  height: 48px;
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.flag-blue { flex: 1; background: var(--blue); }
+.flag-red  { flex: 1; background: var(--red); }
+
+.header-content { flex: 1; }
+
+.header-content h1 {
+  font-size: clamp(1.3rem, 3vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--white);
+}
+.header-icon { font-size: 1.4rem; }
+
+.header-subtitle {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
+.header-meta { flex-shrink: 0; }
+
+.update-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card2);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.update-badge strong { color: var(--text); }
+
+.pulse-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2s infinite;
+  flex-shrink: 0;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--green-glow); }
+  50%       { box-shadow: 0 0 0 6px transparent; }
+}
+
+/* --- Container --- */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 20px;
+  flex: 1;
+}
+
+/* --- Loading / error states --- */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 80px 20px;
+  color: var(--text-muted);
+}
+.spinner {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border2);
+  border-top-color: var(--blue-light);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--red-light);
+  background: rgba(215, 20, 26, 0.08);
+  border: 1px solid rgba(215, 20, 26, 0.2);
+  border-radius: var(--radius-md);
+}
+
+.hidden { display: none !important; }
+
+/* --- Fuel cards --- */
+.cards-section { margin-bottom: 28px; }
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.fuel-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.fuel-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.fuel-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-card), 0 8px 32px rgba(0,0,0,0.3);
+  border-color: var(--border2);
+}
+
+#card-natural95::before { background: var(--n95-color); box-shadow: 0 0 12px rgba(26,110,216,0.5); }
+#card-diesel::before    { background: var(--diesel-color); box-shadow: 0 0 12px rgba(240,136,62,0.5); }
+#card-natural98::before { background: var(--n98-color); box-shadow: 0 0 12px rgba(137,87,229,0.5); }
+#card-lpg::before       { background: var(--lpg-color); box-shadow: 0 0 12px rgba(63,185,80,0.5); }
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.fuel-icon {
+  font-size: 1.6rem;
+  width: 44px; height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--bg-card2);
+  flex-shrink: 0;
+}
+
+.fuel-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+}
+.fuel-tag {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.card-price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.price-value {
+  font-size: clamp(2rem, 5vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--white);
+}
+.price-unit {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.card-trend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  min-height: 22px;
+}
+.trend-up    { color: var(--red-light); }
+.trend-down  { color: var(--green); }
+.trend-same  { color: var(--text-dim); }
+
+.trend-arrow { font-size: 0.9rem; }
+.trend-label { color: var(--text-muted); margin-left: 2px; }
+
+/* --- Stats section --- */
+.stats-section { margin-bottom: 32px; }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.stat-card {
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+.stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--white);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Chart section --- */
+.chart-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  box-shadow: var(--shadow-card);
+}
+
+.chart-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.chart-container {
+  position: relative;
+  height: 320px;
+}
+.chart-container canvas { width: 100% !important; height: 100% !important; }
+
+.chart-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.filter-btn {
+  background: var(--bg-card2);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  font-family: inherit;
+}
+.filter-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.filter-btn.active {
+  background: var(--blue);
+  border-color: var(--blue-light);
+  color: var(--white);
+}
+
+/* --- Footer --- */
+.site-footer {
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  padding: 20px 24px;
+  text-align: center;
+}
+.footer-content p {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+.footer-note { margin-top: 4px; }
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+  .site-header {
+    flex-wrap: wrap;
+    padding: 16px;
+    gap: 12px;
+    min-height: auto;
+  }
+  .header-meta { width: 100%; }
+  .update-badge { font-size: 0.75rem; }
+
+  .container { padding: 20px 16px; }
+
+  .cards-grid { grid-template-columns: 1fr 1fr; }
+
+  .chart-section { padding: 20px 16px; }
+  .chart-container { height: 250px; }
+
+  .chart-header { flex-direction: column; }
+  .chart-legend { display: none; }
+}
+
+@media (max-width: 480px) {
+  .cards-grid { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .price-value { font-size: 2.4rem; }
+}
+
+/* --- Colour accents per fuel type --- */
+#card-natural95:hover { box-shadow: var(--shadow-card), 0 8px 32px rgba(26,110,216,0.2); }
+#card-diesel:hover    { box-shadow: var(--shadow-card), 0 8px 32px rgba(240,136,62,0.2); }
+#card-natural98:hover { box-shadow: var(--shadow-card), 0 8px 32px rgba(137,87,229,0.2); }
+#card-lpg:hover       { box-shadow: var(--shadow-card), 0 8px 32px rgba(63,185,80,0.2); }
+
+/* --- Fade-in animation --- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+#main-content:not(.hidden) {
+  animation: fadeIn 0.4s ease-out;
+}
