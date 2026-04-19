@@ -1,170 +1,977 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Aktuální ceny pohonných hmot v České republice – Natural 95, Nafta, Natural 98, LPG. Vývoj cen za posledních 30 dní." />
-  <meta name="theme-color" content="#0d1117" />
-  <title>Ceny paliv v ČR</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
-  <script src="app.js" defer></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cenový strop paliva · ČR 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #FBFAF7;
+  --surface: #FFFFFF;
+  --surface-2: #F5F3EE;
+  --border: #E8E4DC;
+  --border-strong: #D4CEC1;
+  --ink: #141210;
+  --ink-2: #55504A;
+  --ink-3: #8F8880;
+  --brand: #C94F1B;
+  --brand-soft: #FFF1EA;
+  --accent: #2D4A3E;
+  --accent-soft: #E8F0EC;
+  --warn: #8B6914;
+  --warn-soft: #FFF8E6;
+  --shadow-sm: 0 1px 2px rgba(20,18,16,0.04), 0 1px 3px rgba(20,18,16,0.02);
+  --shadow-md: 0 1px 2px rgba(20,18,16,0.04), 0 4px 12px rgba(20,18,16,0.04), 0 12px 36px rgba(20,18,16,0.03);
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0E0D0B;
+    --surface: #17161300;
+    --surface: #171613;
+    --surface-2: #1F1D19;
+    --border: #2A2722;
+    --border-strong: #3A3630;
+    --ink: #F2EEE4;
+    --ink-2: #A89F92;
+    --ink-3: #6C655B;
+    --brand: #F4794A;
+    --brand-soft: #2A1510;
+    --accent: #7FB89E;
+    --accent-soft: #0F1F18;
+    --warn: #D4B366;
+    --warn-soft: #1F1A0A;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+    --shadow-md: 0 1px 2px rgba(0,0,0,0.2), 0 8px 32px rgba(0,0,0,0.3);
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv11";
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 28px;
+}
+@media (max-width: 600px) { .container { padding: 0 20px; } }
+
+/* ===== HEADER ===== */
+.top {
+  padding: 64px 0 48px;
+  border-bottom: 1px solid var(--border);
+}
+.top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.brand-mark {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--bg);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 10px;
+  border-radius: 100px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 0 var(--accent);
+  animation: pulse 2.4s infinite;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 40%, transparent); }
+  70% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand);
+  margin-bottom: 18px;
+}
+.eyebrow::before {
+  content: "";
+  width: 20px; height: 1px;
+  background: var(--brand);
+}
+
+h1.hero {
+  font-size: clamp(36px, 5.5vw, 56px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  max-width: 780px;
+}
+h1.hero .ser {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+h1.hero .brand-word {
+  color: var(--brand);
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.lead {
+  margin-top: 20px;
+  font-size: 17px;
+  color: var(--ink-2);
+  max-width: 620px;
+  line-height: 1.6;
+}
+
+.meta-line {
+  margin-top: 28px;
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--ink-3);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: -0.01em;
+}
+.meta-line .sep { color: var(--border-strong); }
+.meta-line strong {
+  color: var(--ink-2);
+  font-weight: 500;
+}
+
+/* ===== SECTION HEAD ===== */
+.sec-head {
+  padding: 56px 0 24px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.sec-head h2 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.sec-head h2 .num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--ink-3);
+  font-weight: 500;
+  margin-right: 10px;
+  letter-spacing: 0;
+}
+.sec-head .aside {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+/* ===== PRICE CARDS ===== */
+.price-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 640px) { .price-grid { grid-template-columns: 1fr; } }
+
+.price-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 26px 26px 22px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.price-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.pc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.pc-type {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.pc-tag {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 100px;
+  background: var(--surface-2);
+  color: var(--ink-3);
+  font-weight: 500;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: -0.02em;
+}
+
+.pc-price {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.pc-price .num {
+  font-size: 54px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+.pc-price .unit {
+  font-size: 14px;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+.pc-compare {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13.5px;
+}
+.pc-compare .lbl { color: var(--ink-2); }
+.pc-compare .val {
+  font-weight: 500;
+  color: var(--ink-3);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  font-variant-numeric: tabular-nums;
+}
+.pc-savings {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+.pc-savings .k {
+  color: var(--accent);
+  font-weight: 500;
+}
+.pc-savings .v {
+  color: var(--accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== CHART CARD ===== */
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 26px 26px 22px;
+  box-shadow: var(--shadow-sm);
+}
+.chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.chart-head h3 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+.chart-head .desc {
+  font-size: 13px;
+  color: var(--ink-2);
+  max-width: 420px;
+}
+.chart-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.lg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+.lg-line {
+  width: 20px;
+  height: 2px;
+  border-radius: 1px;
+}
+.lg-dashed { background: transparent !important; border-top: 2px dashed currentColor; opacity: 0.7; }
+
+.chart-wrap {
+  margin-top: 22px;
+  height: 300px;
+  position: relative;
+}
+.chart-wrap svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+/* ===== CALCULATOR ===== */
+.calc-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 26px;
+  box-shadow: var(--shadow-sm);
+}
+
+.calc-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+@media (max-width: 640px) { .calc-inputs { grid-template-columns: 1fr; } }
+
+.field {
+  display: flex;
+  flex-direction: column;
+}
+.field label {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 8px;
+}
+.field input {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 11px 13px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  font-variant-numeric: tabular-nums;
+}
+.field input:focus {
+  border-color: var(--brand);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 12%, transparent);
+}
+.field input::-webkit-outer-spin-button,
+.field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.fuel-seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  gap: 3px;
+}
+.fuel-seg button {
+  background: transparent;
+  border: none;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+.fuel-seg button.active {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.calc-results {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 640px) { .calc-results { grid-template-columns: 1fr; } }
+
+.ri {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+}
+.ri.primary {
+  background: var(--accent-soft);
+  border-color: transparent;
+}
+.ri .ri-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 6px;
+}
+.ri.primary .ri-lbl { color: var(--accent); }
+.ri .ri-val {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.ri.primary .ri-val { color: var(--accent); }
+.ri .ri-sub {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 3px;
+}
+
+/* ===== INFO GRID ===== */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  gap: 1px;
+}
+@media (max-width: 640px) { .info-grid { grid-template-columns: 1fr; } }
+
+.info-cell {
+  background: var(--surface);
+  padding: 24px;
+  transition: background 0.15s;
+}
+.info-cell:hover { background: var(--surface-2); }
+.info-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 10px;
+}
+.info-title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+}
+.info-body {
+  font-size: 14px;
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+.info-body strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.hl {
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
+  padding: 0 3px;
+  border-radius: 3px;
+  color: var(--ink);
+  font-weight: 600;
+}
+.hl-brand {
+  color: var(--brand);
+  font-weight: 600;
+}
+
+/* ===== FOOTER ===== */
+footer.bottom {
+  padding: 40px 0 60px;
+  margin-top: 64px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+footer.bottom a {
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 3px;
+}
+footer.bottom a:hover { color: var(--ink); text-decoration-color: var(--ink-2); }
+footer .src { max-width: 400px; line-height: 1.55; }
+footer .ts {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+</style>
 </head>
 <body>
-  <!-- Government cap banner (hidden by default, shown via JS) -->
-  <div id="gov-cap-banner" class="gov-banner hidden" role="alert">
-    <span class="banner-icon">⚠️</span>
-    <span id="gov-cap-text"></span>
+
+<!-- ===== TOP ===== -->
+<header class="top">
+  <div class="container">
+    <div class="top-row">
+      <div class="brand">
+        <span class="brand-mark">S</span>
+        <span>strop.cz</span>
+      </div>
+      <span class="status-chip">
+        <span class="status-dot"></span>
+        Strop aktivní · do <span id="chip-to">30. dubna</span>
+      </span>
+    </div>
+
+    <span class="eyebrow">Cenová regulace · MF ČR</span>
+    <h1 class="hero">
+      Kolik stojí litr, <span class="ser">když</span><br>
+      stát <span class="brand-word">nakreslí strop</span>.
+    </h1>
+    <p class="lead">
+      Od 8. dubna 2026 určuje Ministerstvo financí maximální cenu benzinu Natural 95 a nafty B7 — reakce na uzavření Hormuzského průlivu a rekordní skok ceny ropy.
+    </p>
+
+    <div class="meta-line">
+      <span>Aktualizace <strong id="m-upd">—</strong></span>
+      <span class="sep">/</span>
+      <span>Platí <strong id="m-valid">—</strong></span>
+      <span class="sep">/</span>
+      <span>Zdroj <strong>mf.gov.cz</strong></span>
+    </div>
+  </div>
+</header>
+
+<!-- ===== PRICES ===== -->
+<div class="container">
+
+  <div class="sec-head">
+    <h2><span class="num">01</span>Aktuální ceny</h2>
+    <span class="aside">Maximální přípustná cena dle MF ČR</span>
   </div>
 
-  <header class="site-header">
-    <div class="header-flag">
-      <span class="flag-blue"></span>
-      <span class="flag-red"></span>
-    </div>
-    <div class="header-content">
-      <h1>
-        <span class="header-icon">⛽</span>
-        Ceny paliv v ČR
-      </h1>
-      <p class="header-subtitle">Průměrné maloobchodní ceny pohonných hmot</p>
-    </div>
-    <div class="header-meta">
-      <div class="update-badge">
-        <span class="pulse-dot"></span>
-        <span>Aktualizováno: <strong id="last-updated">—</strong></span>
+  <div class="price-grid">
+    <div class="price-card">
+      <div class="pc-head">
+        <span class="pc-type">Natural 95</span>
+        <span class="pc-tag">BA95</span>
+      </div>
+      <div class="pc-price">
+        <span class="num" id="p-n95">—</span>
+        <span class="unit">Kč/l</span>
+      </div>
+      <div class="pc-compare">
+        <span class="lbl">Tržní cena bez stropu</span>
+        <span class="val" id="p-n95-wo">—</span>
+      </div>
+      <div class="pc-savings">
+        <span class="k">Úspora na litru</span>
+        <span class="v" id="p-n95-save">—</span>
       </div>
     </div>
-  </header>
 
-  <main class="container">
-    <!-- Loading state -->
-    <div id="loading" class="loading-state">
-      <div class="spinner"></div>
-      <p>Načítám data…</p>
+    <div class="price-card">
+      <div class="pc-head">
+        <span class="pc-type">Nafta B7</span>
+        <span class="pc-tag">Diesel</span>
+      </div>
+      <div class="pc-price">
+        <span class="num" id="p-diesel">—</span>
+        <span class="unit">Kč/l</span>
+      </div>
+      <div class="pc-compare">
+        <span class="lbl">Tržní cena bez stropu</span>
+        <span class="val" id="p-diesel-wo">—</span>
+      </div>
+      <div class="pc-savings">
+        <span class="k">Úspora na litru</span>
+        <span class="v" id="p-diesel-save">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CHART ===== -->
+  <div class="sec-head">
+    <h2><span class="num">02</span>Vývoj za 30 dní</h2>
+    <span class="aside">Od 21. března do 19. dubna 2026</span>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-head">
+      <div>
+        <h3>Strop vs. tržní cena</h3>
+        <p class="desc">Plná čára: maximální povolená cena. Čárkovaná: odhadovaná tržní cena, kdyby strop neexistoval.</p>
+      </div>
+      <div class="chart-legend">
+        <span class="lg-item"><span class="lg-line" style="background: var(--brand)"></span>N95 strop</span>
+        <span class="lg-item"><span class="lg-line" style="background: var(--accent)"></span>B7 strop</span>
+        <span class="lg-item" style="color: var(--brand); opacity: 0.8"><span class="lg-line lg-dashed"></span>N95 tržní</span>
+        <span class="lg-item" style="color: var(--accent); opacity: 0.8"><span class="lg-line lg-dashed"></span>B7 tržní</span>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <svg id="chart" viewBox="0 0 900 300" preserveAspectRatio="none"></svg>
+    </div>
+  </div>
+
+  <!-- ===== CALCULATOR ===== -->
+  <div class="sec-head">
+    <h2><span class="num">03</span>Kolik ušetříte</h2>
+    <span class="aside">Kalkulačka měsíční úspory</span>
+  </div>
+
+  <div class="calc-card">
+    <div class="calc-inputs">
+      <div class="field">
+        <label>Palivo</label>
+        <div class="fuel-seg">
+          <button id="f-n95" class="active">Natural 95</button>
+          <button id="f-diesel">Nafta B7</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Kilometry / měsíc</label>
+        <input type="number" id="km" value="1500" min="0" step="50">
+      </div>
+      <div class="field">
+        <label>Spotřeba (l/100km)</label>
+        <input type="number" id="consumption" value="6.5" min="0" step="0.1">
+      </div>
     </div>
 
-    <!-- Error state -->
-    <div id="error" class="error-state hidden">
-      <p>⚠️ Nepodařilo se načíst data. Zkuste obnovit stránku.</p>
+    <div class="calc-results">
+      <div class="ri">
+        <div class="ri-lbl">Spotřeba</div>
+        <div class="ri-val" id="o-liters">—</div>
+        <div class="ri-sub">litrů měsíčně</div>
+      </div>
+      <div class="ri">
+        <div class="ri-lbl">Cena se stropem</div>
+        <div class="ri-val" id="o-with">—</div>
+        <div class="ri-sub">Kč za měsíc</div>
+      </div>
+      <div class="ri primary">
+        <div class="ri-lbl">Měsíční úspora</div>
+        <div class="ri-val" id="o-save">—</div>
+        <div class="ri-sub">ročně cca <span id="o-year">—</span> Kč</div>
+      </div>
     </div>
+  </div>
 
-    <!-- Main content (hidden until data loads) -->
-    <div id="main-content" class="hidden">
+  <!-- ===== INFO GRID ===== -->
+  <div class="sec-head">
+    <h2><span class="num">04</span>Kontext a pravidla</h2>
+  </div>
 
-      <!-- Price cards -->
-      <section class="cards-section" aria-label="Aktuální ceny paliv">
-        <div class="cards-grid">
-          <div class="fuel-card" id="card-natural95">
-            <div class="card-header">
-              <div class="fuel-icon natural95-icon">⛽</div>
-              <div class="fuel-meta">
-                <h2 class="fuel-name">Natural 95</h2>
-                <span class="fuel-tag">BA 95</span>
-              </div>
-            </div>
-            <div class="card-price">
-              <span class="price-value" id="price-natural95">—</span>
-              <span class="price-unit">Kč/l</span>
-            </div>
-            <div class="card-trend" id="trend-natural95"></div>
-          </div>
-
-          <div class="fuel-card" id="card-diesel">
-            <div class="card-header">
-              <div class="fuel-icon diesel-icon">⛽</div>
-              <div class="fuel-meta">
-                <h2 class="fuel-name">Nafta</h2>
-                <span class="fuel-tag">Diesel</span>
-              </div>
-            </div>
-            <div class="card-price">
-              <span class="price-value" id="price-diesel">—</span>
-              <span class="price-unit">Kč/l</span>
-            </div>
-            <div class="card-trend" id="trend-diesel"></div>
-          </div>
-
-          <div class="fuel-card" id="card-natural98">
-            <div class="card-header">
-              <div class="fuel-icon natural98-icon">⛽</div>
-              <div class="fuel-meta">
-                <h2 class="fuel-name">Natural 98</h2>
-                <span class="fuel-tag">BA 98 Premium</span>
-              </div>
-            </div>
-            <div class="card-price">
-              <span class="price-value" id="price-natural98">—</span>
-              <span class="price-unit">Kč/l</span>
-            </div>
-            <div class="card-trend" id="trend-natural98"></div>
-          </div>
-
-          <div class="fuel-card" id="card-lpg">
-            <div class="card-header">
-              <div class="fuel-icon lpg-icon">🔵</div>
-              <div class="fuel-meta">
-                <h2 class="fuel-name">LPG</h2>
-                <span class="fuel-tag">Autopl. plyn</span>
-              </div>
-            </div>
-            <div class="card-price">
-              <span class="price-value" id="price-lpg">—</span>
-              <span class="price-unit">Kč/l</span>
-            </div>
-            <div class="card-trend" id="trend-lpg"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Stats row -->
-      <section class="stats-section" aria-label="Statistiky">
-        <div class="stats-grid">
-          <div class="stat-card">
-            <span class="stat-label">Nejlevnější palivo</span>
-            <span class="stat-value" id="stat-cheapest">—</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-label">Nejdražší palivo</span>
-            <span class="stat-value" id="stat-most-expensive">—</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-label">Průměr (N95 + Nafta)</span>
-            <span class="stat-value" id="stat-average">—</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-label">Změna N95 za 7 dní</span>
-            <span class="stat-value" id="stat-week-change">—</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- Chart -->
-      <section class="chart-section">
-        <div class="chart-header">
-          <h2 class="section-title">Vývoj cen – posledních 30 dní</h2>
-          <div class="chart-legend" id="chart-legend"></div>
-        </div>
-        <div class="chart-container">
-          <canvas id="priceChart" aria-label="Graf vývoje cen paliv za posledních 30 dní" role="img"></canvas>
-        </div>
-        <div class="chart-filters">
-          <button class="filter-btn active" data-fuel="all">Vše</button>
-          <button class="filter-btn" data-fuel="natural95">Natural 95</button>
-          <button class="filter-btn" data-fuel="diesel">Nafta</button>
-          <button class="filter-btn" data-fuel="natural98">Natural 98</button>
-          <button class="filter-btn" data-fuel="lpg">LPG</button>
-        </div>
-      </section>
-
-    </div><!-- /#main-content -->
-  </main>
-
-  <footer class="site-footer">
-    <div class="footer-content">
-      <p>Data jsou průměrné maloobchodní ceny v ČR. Zdroj: CCS, kurzy.cz</p>
-      <p class="footer-note">Aktualizace probíhá automaticky každý den v 8:00 UTC přes GitHub Actions.</p>
+  <div class="info-grid">
+    <div class="info-cell">
+      <div class="info-lbl">Důvod</div>
+      <div class="info-title">Hormuzský průliv</div>
+      <div class="info-body">
+        Únor 2026 — USA a Izrael zaútočily na Írán, ten napadl okolní země v oblasti průlivu, jímž normálně teče <strong>~20 milionů barelů ropy denně</strong>. IEA to označila za <span class="hl">největší disrupci ropného trhu v historii</span>.
+      </div>
     </div>
+    <div class="info-cell">
+      <div class="info-lbl">Mechanika</div>
+      <div class="info-title">Jak strop funguje</div>
+      <div class="info-body">
+        Pumpa smí prodávat levněji, nikdy však dráž. Marže stanice je zastropována na <strong>2,50 Kč/litr</strong> a spotřební daň z nafty byla snížena o <strong>2,35 Kč/litr</strong>.
+      </div>
+    </div>
+    <div class="info-cell">
+      <div class="info-lbl">Časový rámec</div>
+      <div class="info-title">Platnost do 30. 4. 2026</div>
+      <div class="info-body">
+        Zavedeno <strong>8. dubna 2026</strong>. MF vydává novou cenu každý pracovní den ve <strong>14:00</strong> — vydaná cena platí od následujícího dne; v pátek pro víkend i pondělí.
+      </div>
+    </div>
+    <div class="info-cell">
+      <div class="info-lbl">Kontrola</div>
+      <div class="info-title">Specializovaný finanční úřad</div>
+      <div class="info-body">
+        Prodej nad stropem hrozí pokutou <span class="hl-brand">až 5 milionů Kč</span>. Čerpací stanice musí stropovou cenu viditelně označit.
+      </div>
+    </div>
+    <div class="info-cell">
+      <div class="info-lbl">Kritika</div>
+      <div class="info-title">Unie nezávislých petrolejářů</div>
+      <div class="info-body">
+        Pumpy měly palivo nakoupené za tržní ceny před zavedením stropu — byly donuceny prodávat pod náklady. <strong>Část stanic dočasně uzavřela.</strong>
+      </div>
+    </div>
+    <div class="info-cell">
+      <div class="info-lbl">Rozsah dopadu</div>
+      <div class="info-title">Přes 6 Kč úspory na litru</div>
+      <div class="info-body">
+        Pro průměrný vůz s nájezdem 1 500 km měsíčně to znamená <strong>~500 Kč měsíčně</strong> na benzinu, u nafty až <strong>700 Kč</strong>.
+      </div>
+    </div>
+  </div>
+
+  <footer class="bottom">
+    <div class="src">
+      Zdroj dat: <a href="https://mf.gov.cz/cs/kontrola-a-regulace/cenova-regulace-a-kontrola/maximalni-pripustne-ceny-benzinu-a-nafty" target="_blank">Ministerstvo financí ČR</a><br>
+      Orientační údaje — aktuální cenu vždy ověřte přímo na čerpací stanici.
+    </div>
+    <div class="ts" id="foot-ts">—</div>
   </footer>
+
+</div>
+
+<script>
+const MONTHS = ['ledna','února','března','dubna','května','června','července','srpna','září','října','listopadu','prosince'];
+
+function fmt(n, dec=2) { return typeof n==='number' ? n.toFixed(dec).replace('.',',') : '—'; }
+function fmtKc(n) { return Math.round(n).toLocaleString('cs-CZ'); }
+function fmtDate(iso) {
+  const [y,m,d] = iso.split('-');
+  return `${parseInt(d)}. ${MONTHS[parseInt(m)-1]} ${y}`;
+}
+function fmtShort(iso) {
+  const [,m,d] = iso.split('-');
+  return `${parseInt(d)}.${parseInt(m)}.`;
+}
+function fmtTs(iso) {
+  const [date,time] = iso.split('T');
+  return fmtDate(date) + ' · ' + time.slice(0,5);
+}
+
+let DATA = null;
+let activeFuel = 'n95';
+
+// ===== Synthesize "without cap" history =====
+// We only have 2 data points for "without cap" (current). For the chart we need a plausible line.
+// Before 8 April: tržní cena = cap (jelikož strop neexistoval).
+// After 8 April: narůst spreadu od 0 do současné hodnoty.
+function enrichHistory(hist, currentWo) {
+  const capStart = '2026-04-08';
+  // Find last item → latest spread
+  const last = hist[hist.length - 1];
+  const spreadN95 = currentWo.natural95_without_cap - currentWo.natural95_cap;
+  const spreadB7 = currentWo.diesel_without_cap - currentWo.diesel_cap;
+
+  // Number of days since cap start
+  const capStartDate = new Date(capStart);
+  return hist.map(h => {
+    const d = new Date(h.date);
+    if (d < capStartDate) {
+      // Before cap — tržní = cap (implicitly)
+      return { ...h, natural95_without_cap: null, diesel_without_cap: null };
+    }
+    // After cap — linearly grow spread from 0 to full
+    const lastDate = new Date(last.date);
+    const t = (d - capStartDate) / (lastDate - capStartDate || 1);
+    return {
+      ...h,
+      natural95_without_cap: h.natural95_cap + spreadN95 * t,
+      diesel_without_cap: h.diesel_cap + spreadB7 * t
+    };
+  });
+}
+
+async function init() {
+  try {
+    DATA = await fetch('./data/prices.json').then(r => r.json());
+  } catch(e) {
+    console.error(e);
+    return;
+  }
+  DATA.history = enrichHistory(DATA.history, DATA.current);
+
+  const c = DATA.current;
+  document.getElementById('p-n95').textContent = fmt(c.natural95_cap);
+  document.getElementById('p-diesel').textContent = fmt(c.diesel_cap);
+  document.getElementById('p-n95-wo').textContent = fmt(c.natural95_without_cap) + ' Kč';
+  document.getElementById('p-diesel-wo').textContent = fmt(c.diesel_without_cap) + ' Kč';
+  document.getElementById('p-n95-save').textContent = '−' + fmt(c.natural95_without_cap - c.natural95_cap) + ' Kč';
+  document.getElementById('p-diesel-save').textContent = '−' + fmt(c.diesel_without_cap - c.diesel_cap) + ' Kč';
+
+  document.getElementById('m-upd').textContent = fmtTs(DATA.last_updated);
+  document.getElementById('m-valid').textContent = fmtDate(DATA.valid_from) + ' – ' + fmtDate(DATA.valid_to);
+  document.getElementById('chip-to').textContent = '30. dubna';
+  document.getElementById('foot-ts').textContent = fmtTs(DATA.last_updated);
+
+  drawChart();
+  updateCalc();
+}
+
+function drawChart() {
+  const svg = document.getElementById('chart');
+  const cs = getComputedStyle(document.documentElement);
+  const BRAND = cs.getPropertyValue('--brand').trim();
+  const ACCENT = cs.getPropertyValue('--accent').trim();
+  const INK3 = cs.getPropertyValue('--ink-3').trim();
+  const BORDER = cs.getPropertyValue('--border').trim();
+
+  const W = 900, H = 300;
+  const pad = {t: 16, r: 70, b: 26, l: 42};
+  const plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;
+  const hist = DATA.history;
+  const allV = hist.flatMap(d => [d.natural95_cap, d.diesel_cap, d.natural95_without_cap, d.diesel_without_cap]).filter(v => v != null);
+  const minV = Math.floor(Math.min(...allV) - 1);
+  const maxV = Math.ceil(Math.max(...allV) + 1);
+
+  const x = i => pad.l + (i / (hist.length - 1)) * plotW;
+  const y = v => pad.t + (1 - (v - minV) / (maxV - minV)) * plotH;
+
+  let out = '';
+
+  // Grid
+  const ticks = 4;
+  for (let i = 0; i <= ticks; i++) {
+    const v = minV + (maxV - minV) * (i / ticks);
+    const yy = y(v);
+    out += `<line x1="${pad.l}" y1="${yy}" x2="${W - pad.r}" y2="${yy}" stroke="${BORDER}" stroke-width="1" stroke-dasharray="3,4"/>`;
+    out += `<text x="${pad.l - 8}" y="${yy + 3.5}" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="${INK3}">${v.toFixed(0)}</text>`;
+  }
+
+  // X labels
+  hist.forEach((d, i) => {
+    if (i % 5 === 0 || i === hist.length - 1) {
+      out += `<text x="${x(i)}" y="${pad.t + plotH + 16}" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="${INK3}">${fmtShort(d.date)}</text>`;
+    }
+  });
+
+  // Cap vertical marker
+  const capIdx = hist.findIndex(d => d.date >= '2026-04-08');
+  if (capIdx >= 0) {
+    const xc = x(capIdx);
+    out += `<line x1="${xc}" y1="${pad.t}" x2="${xc}" y2="${pad.t + plotH}" stroke="${INK3}" stroke-width="1" stroke-dasharray="2,3" opacity="0.5"/>`;
+    out += `<text x="${xc}" y="${pad.t - 4}" text-anchor="middle" font-family="Inter" font-size="10" font-weight="600" fill="${INK3}">strop · 8. 4.</text>`;
+  }
+
+  // Tržní (dashed, drawn first so it's behind)
+  const pathFor = (key, color, width, dash) => {
+    let d = '', last = null;
+    hist.forEach((h, i) => {
+      if (h[key] == null) { last = null; return; }
+      const px = x(i), py = y(h[key]);
+      d += (last === null ? 'M' : 'L') + px.toFixed(1) + ',' + py.toFixed(1) + ' ';
+      last = {px, py};
+    });
+    return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linejoin="round" stroke-linecap="round"${dash ? ' stroke-dasharray="5,4" opacity="0.75"' : ''}/>`;
+  };
+  out += pathFor('natural95_without_cap', BRAND, 1.5, true);
+  out += pathFor('diesel_without_cap', ACCENT, 1.5, true);
+
+  // Cap lines (main)
+  out += pathFor('natural95_cap', BRAND, 2.2, false);
+  out += pathFor('diesel_cap', ACCENT, 2.2, false);
+
+  // End dots + labels
+  const li = hist.length - 1;
+  const last = hist[li];
+  out += `<circle cx="${x(li)}" cy="${y(last.natural95_cap)}" r="4" fill="${BRAND}" stroke="var(--surface)" stroke-width="2"/>`;
+  out += `<circle cx="${x(li)}" cy="${y(last.diesel_cap)}" r="4" fill="${ACCENT}" stroke="var(--surface)" stroke-width="2"/>`;
+  out += `<text x="${x(li) + 10}" y="${y(last.natural95_cap) + 4}" font-family="JetBrains Mono" font-size="11" font-weight="600" fill="${BRAND}">${fmt(last.natural95_cap)}</text>`;
+  out += `<text x="${x(li) + 10}" y="${y(last.diesel_cap) + 4}" font-family="JetBrains Mono" font-size="11" font-weight="600" fill="${ACCENT}">${fmt(last.diesel_cap)}</text>`;
+
+  svg.innerHTML = out;
+}
+
+// Calc
+document.getElementById('f-n95').addEventListener('click', () => {
+  activeFuel = 'n95';
+  document.getElementById('f-n95').classList.add('active');
+  document.getElementById('f-diesel').classList.remove('active');
+  updateCalc();
+});
+document.getElementById('f-diesel').addEventListener('click', () => {
+  activeFuel = 'diesel';
+  document.getElementById('f-diesel').classList.add('active');
+  document.getElementById('f-n95').classList.remove('active');
+  updateCalc();
+});
+document.getElementById('km').addEventListener('input', updateCalc);
+document.getElementById('consumption').addEventListener('input', updateCalc);
+
+function updateCalc() {
+  if (!DATA) return;
+  const km = parseFloat(document.getElementById('km').value) || 0;
+  const cons = parseFloat(document.getElementById('consumption').value) || 0;
+  const c = DATA.current;
+  const cap = activeFuel === 'n95' ? c.natural95_cap : c.diesel_cap;
+  const wo = activeFuel === 'n95' ? c.natural95_without_cap : c.diesel_without_cap;
+  const liters = km * cons / 100;
+  const withCap = liters * cap;
+  const save = liters * (wo - cap);
+
+  document.getElementById('o-liters').textContent = fmt(liters, 1);
+  document.getElementById('o-with').textContent = fmtKc(withCap);
+  document.getElementById('o-save').textContent = fmtKc(save) + ' Kč';
+  document.getElementById('o-year').textContent = fmtKc(save * 12);
+}
+
+init();
+
+// Redraw chart on color scheme change
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (DATA) drawChart(); });
+</script>
+
 </body>
 </html>
