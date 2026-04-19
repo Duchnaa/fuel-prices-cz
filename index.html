@@ -373,6 +373,26 @@ h1.hero .brand-word {
 }
 .chart-wrap svg { width: 100%; height: 100%; display: block; overflow: visible; }
 
+#chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink-1);
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  white-space: nowrap;
+  z-index: 10;
+}
+#chart-tooltip .tt-date { font-size: 11px; color: var(--ink-2); margin-bottom: 2px; }
+#chart-tooltip .tt-n95 { color: var(--brand); }
+#chart-tooltip .tt-diesel { color: var(--accent); }
+
 /* ===== CALCULATOR ===== */
 .calc-card {
   background: var(--surface);
@@ -658,24 +678,27 @@ footer .ts {
   <!-- ===== CHART ===== -->
   <div class="sec-head">
     <h2><span class="num">02</span>Vývoj za 30 dní</h2>
-    <span class="aside">Od 21. března do 19. dubna 2026</span>
+    <span class="aside" id="chart-range"></span>
   </div>
 
   <div class="chart-card">
     <div class="chart-head">
       <div>
-        <h3>Strop vs. tržní cena</h3>
-        <p class="desc">Plná čára: maximální povolená cena. Čárkovaná: odhadovaná tržní cena, kdyby strop neexistoval.</p>
+        <h3>Vývoj cenového stropu</h3>
+        <p class="desc">Maximální přípustná cena benzinu Natural 95 a nafty B7 dle Ministerstva financí ČR.</p>
       </div>
       <div class="chart-legend">
-        <span class="lg-item"><span class="lg-line" style="background: var(--brand)"></span>N95 strop</span>
-        <span class="lg-item"><span class="lg-line" style="background: var(--accent)"></span>B7 strop</span>
-        <span class="lg-item" style="color: var(--brand); opacity: 0.8"><span class="lg-line lg-dashed"></span>N95 tržní</span>
-        <span class="lg-item" style="color: var(--accent); opacity: 0.8"><span class="lg-line lg-dashed"></span>B7 tržní</span>
+        <span class="lg-item"><span class="lg-line" style="background: var(--brand)"></span>Natural 95</span>
+        <span class="lg-item"><span class="lg-line" style="background: var(--accent)"></span>Nafta B7</span>
       </div>
     </div>
-    <div class="chart-wrap">
+    <div class="chart-wrap" id="chart-wrap">
       <svg id="chart" viewBox="0 0 900 300" preserveAspectRatio="none"></svg>
+      <div id="chart-tooltip">
+        <div class="tt-date" id="tt-date"></div>
+        <div class="tt-n95" id="tt-n95"></div>
+        <div class="tt-diesel" id="tt-diesel"></div>
+      </div>
     </div>
   </div>
 
@@ -856,6 +879,13 @@ async function init() {
   document.getElementById('chip-to').textContent = '30. dubna';
   document.getElementById('foot-ts').textContent = fmtTs(DATA.last_updated);
 
+  const hist = DATA.history;
+  if (hist.length) {
+    const from = fmtDate(hist[0].date);
+    const to = fmtDate(hist[hist.length - 1].date);
+    document.getElementById('chart-range').textContent = 'Od ' + from + ' do ' + to;
+  }
+
   drawChart();
   updateCalc();
 }
@@ -872,7 +902,7 @@ function drawChart() {
   const pad = {t: 16, r: 70, b: 26, l: 42};
   const plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;
   const hist = DATA.history;
-  const allV = hist.flatMap(d => [d.natural95_cap, d.diesel_cap, d.natural95_without_cap, d.diesel_without_cap]).filter(v => v != null);
+  const allV = hist.flatMap(d => [d.natural95_cap, d.diesel_cap]).filter(v => v != null);
   const minV = Math.floor(Math.min(...allV) - 1);
   const maxV = Math.ceil(Math.max(...allV) + 1);
 
@@ -905,8 +935,7 @@ function drawChart() {
     out += `<text x="${xc}" y="${pad.t - 4}" text-anchor="middle" font-family="Inter" font-size="10" font-weight="600" fill="${INK3}">strop · 8. 4.</text>`;
   }
 
-  // Tržní (dashed, drawn first so it's behind)
-  const pathFor = (key, color, width, dash) => {
+  const pathFor = (key, color, width) => {
     let d = '', last = null;
     hist.forEach((h, i) => {
       if (h[key] == null) { last = null; return; }
@@ -914,14 +943,11 @@ function drawChart() {
       d += (last === null ? 'M' : 'L') + px.toFixed(1) + ',' + py.toFixed(1) + ' ';
       last = {px, py};
     });
-    return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linejoin="round" stroke-linecap="round"${dash ? ' stroke-dasharray="5,4" opacity="0.75"' : ''}/>`;
+    return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linejoin="round" stroke-linecap="round"/>`;
   };
-  out += pathFor('natural95_without_cap', BRAND, 1.5, true);
-  out += pathFor('diesel_without_cap', ACCENT, 1.5, true);
 
-  // Cap lines (main)
-  out += pathFor('natural95_cap', BRAND, 2.2, false);
-  out += pathFor('diesel_cap', ACCENT, 2.2, false);
+  out += pathFor('natural95_cap', BRAND, 2.2);
+  out += pathFor('diesel_cap', ACCENT, 2.2);
 
   // End dots + labels
   const li = hist.length - 1;
@@ -932,6 +958,34 @@ function drawChart() {
   out += `<text x="${x(li) + 10}" y="${y(last.diesel_cap) + 4}" font-family="JetBrains Mono" font-size="11" font-weight="600" fill="${ACCENT}">${fmt(last.diesel_cap)}</text>`;
 
   svg.innerHTML = out;
+
+  // Tooltip interaction
+  const wrap = document.getElementById('chart-wrap');
+  const tip = document.getElementById('chart-tooltip');
+  wrap.addEventListener('mousemove', e => {
+    const rect = wrap.getBoundingClientRect();
+    const relX = e.clientX - rect.left;
+    const svgLeft = pad.l / 900 * rect.width;
+    const svgRight = (900 - pad.r) / 900 * rect.width;
+    const plotPx = svgRight - svgLeft;
+    if (relX < svgLeft || relX > svgRight) { tip.style.display = 'none'; return; }
+    const frac = (relX - svgLeft) / plotPx;
+    const idx = Math.round(frac * (hist.length - 1));
+    const d = hist[Math.max(0, Math.min(idx, hist.length - 1))];
+    document.getElementById('tt-date').textContent = fmtDate(d.date);
+    document.getElementById('tt-n95').textContent = 'N95  ' + fmt(d.natural95_cap) + ' Kč';
+    document.getElementById('tt-diesel').textContent = 'B7    ' + fmt(d.diesel_cap) + ' Kč';
+    tip.style.display = 'block';
+    const tipW = tip.offsetWidth;
+    let left = relX + 14;
+    if (left + tipW > rect.width - 8) left = relX - tipW - 14;
+    tip.style.left = left + 'px';
+    const tipH = tip.offsetHeight;
+    let top = e.clientY - rect.top - tipH / 2;
+    top = Math.max(4, Math.min(top, rect.height - tipH - 4));
+    tip.style.top = top + 'px';
+  });
+  wrap.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
 }
 
 // Calc
