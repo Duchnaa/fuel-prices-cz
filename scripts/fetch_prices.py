@@ -1,283 +1,182 @@
 #!/usr/bin/env python3
 """
-fetch_prices.py — Stahuje průměrné ceny pohonných hmot v ČR
-a aktualizuje data/prices.json.
+fetch_prices.py — Stahuje maximální přípustné ceny benzinu a nafty
+z webu Ministerstva financí ČR pomocí Playwright.
 
-Zdroje (v pořadí fallbacku):
-  1. CCS.cz  — tabulka průměrných CEN
-  2. kurzy.cz — scraping z ceníkové stránky
-  3. GreenCar.cz — alternativní zdroj
+Zdroj:
+  https://mf.gov.cz/cs/kontrola-a-regulace/cenova-regulace-a-kontrola/
+  maximalni-pripustne-ceny-benzinu-a-nafty
+
+Logika platnosti cen:
+  - Po–Čt: ceny vydané dnes platí pro ZÍTŘEK
+  - Pá:    ceny vydané v pátek platí pro pátek, sobotu, neděli i pondělí
 """
 
 import json
 import os
 import re
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 try:
-    import requests
-    from bs4 import BeautifulSoup
+    from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
 except ImportError:
-    print("ERROR: Chybí závislosti. Spusť: pip install requests beautifulsoup4 lxml")
+    print("ERROR: Chybí playwright. Spusť: pip install playwright && playwright install chromium")
     sys.exit(1)
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE = os.path.join(SCRIPT_DIR, "..", "data", "prices.json")
+DATA_FILE   = os.path.join(SCRIPT_DIR, "..", "data", "prices.json")
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "cs-CZ,cs;q=0.9,en;q=0.8",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-}
+MF_URL = (
+    "https://mf.gov.cz/cs/kontrola-a-regulace/cenova-regulace-a-kontrola/"
+    "maximalni-pripustne-ceny-benzinu-a-nafty"
+)
 
-TIMEOUT = 20
+PAGE_TIMEOUT = 30_000  # ms
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Datum platnosti
 # ---------------------------------------------------------------------------
 
-def _parse_price(text: str) -> float | None:
-    """Extrahuje číslo ceny z textu, napr. '37,20 Kč' → 37.20"""
+def valid_from_date() -> str:
+    """
+    Vrátí datum, od kterého vydané ceny platí:
+      - pátek (weekday=4): platí od dnešního pátku
+      - Po–Čt:             platí od zítřka
+    """
+    today = date.today()
+    if today.weekday() == 4:
+        return today.isoformat()
+    return (today + timedelta(days=1)).isoformat()
+
+
+# ---------------------------------------------------------------------------
+# Parsování ceny
+# ---------------------------------------------------------------------------
+
+def parse_price(text: str) -> float | None:
+    """'41,67 Kč/l' nebo '44.36' → 44.36; vrátí None pokud není v rozsahu 15–100."""
     if not text:
         return None
-    # Odstraň mezery, nahraď čárku tečkou
-    cleaned = text.strip().replace("\xa0", "").replace(" ", "")
+    cleaned = text.strip().replace("\xa0", "").replace("\u202f", "").replace(" ", "")
     m = re.search(r"(\d{2,3})[,.](\d{1,2})", cleaned)
     if m:
         val = float(f"{m.group(1)}.{m.group(2)}")
-        # Sanity check: ceny paliv v ČR jsou 15–80 Kč/l
-        if 15.0 <= val <= 80.0:
+        if 15.0 <= val <= 100.0:
             return val
     return None
 
 
-def _normalize(prices: dict) -> dict:
-    """Zaokrouhlí hodnoty na 2 desetinná místa."""
-    return {k: round(float(v), 2) for k, v in prices.items() if v is not None}
-
-
 # ---------------------------------------------------------------------------
-# Zdroj 1: CCS.cz
+# Scraping MF ČR
 # ---------------------------------------------------------------------------
 
-def fetch_from_ccs() -> dict | None:
+def fetch_from_mf() -> dict | None:
     """
-    CCS zveřejňuje průměrné ceny pohonných hmot na stránce:
-    https://www.ccs.cz/cs/karty-a-ceny/ceny-pohonnych-hmot
-    Tabulka obvykle obsahuje řádky s názvy paliv a CEN.
+    Načte stránku MF ČR a z tabulky vytáhne maximální ceny:
+      natural95_cap  — Natural 95 (Kč/l)
+      diesel_cap     — Motorová nafta B7 (Kč/l)
+
+    Vrátí dict nebo None při selhání.
     """
-    url = "https://www.ccs.cz/cs/karty-a-ceny/ceny-pohonnych-hmot"
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
-        r.raise_for_status()
-    except Exception as e:
-        print(f"  CCS: request failed — {e}")
-        return None
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=True)
+        context = browser.new_context(
+            locale="cs-CZ",
+            user_agent=(
+                "Mozilla/5.0 (X11; Linux x86_64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+        )
+        page = context.new_page()
+        page.set_default_timeout(PAGE_TIMEOUT)
 
-    soup = BeautifulSoup(r.text, "lxml")
-    prices: dict = {}
-
-    # Zkusíme najít všechny tabulky
-    for table in soup.find_all("table"):
-        for row in table.find_all("tr"):
-            cells = row.find_all(["td", "th"])
-            if len(cells) < 2:
-                continue
-            label = cells[0].get_text(" ", strip=True).lower()
-            # Vezmi poslední buňku jako cenu (nebo druhou)
-            for cell in reversed(cells[1:]):
-                price = _parse_price(cell.get_text(strip=True))
-                if price is None:
-                    continue
-                if "natural 95" in label or "ba 95" in label or "95" in label and "natural" in label:
-                    prices.setdefault("natural95", price)
-                elif "nafta" in label or "diesel" in label:
-                    prices.setdefault("diesel", price)
-                elif "natural 98" in label or "ba 98" in label or "98" in label and "natural" in label:
-                    prices.setdefault("natural98", price)
-                elif "lpg" in label or "autopl" in label:
-                    prices.setdefault("lpg", price)
-                break
-
-    # Záložní: hledej strukturovaná data jako JSON-LD nebo data atributy
-    if len(prices) < 2:
-        for tag in soup.find_all(attrs={"data-price": True}):
-            label = (tag.get("data-name", "") + " " + tag.get_text()).lower()
-            price = _parse_price(tag.get("data-price", ""))
-            if price is None:
-                continue
-            if "95" in label:
-                prices.setdefault("natural95", price)
-            elif "nafta" in label or "diesel" in label:
-                prices.setdefault("diesel", price)
-            elif "98" in label:
-                prices.setdefault("natural98", price)
-            elif "lpg" in label:
-                prices.setdefault("lpg", price)
-
-    if len(prices) >= 2:
-        print(f"  CCS: úspěch — {prices}")
-        return _normalize(prices)
-
-    print("  CCS: nepodařilo se parsovat dostatek dat")
-    return None
-
-
-# ---------------------------------------------------------------------------
-# Zdroj 2: kurzy.cz — API endpoint
-# ---------------------------------------------------------------------------
-
-def fetch_from_kurzy_api() -> dict | None:
-    """
-    kurzy.cz poskytuje ceny paliv přes API nebo jako JSON na svých stránkách.
-    """
-    urls_to_try = [
-        "https://api.kurzy.cz/paliva/",
-        "https://www.kurzy.cz/api/paliva/",
-    ]
-
-    for url in urls_to_try:
         try:
-            r = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
-            r.raise_for_status()
-            data = r.json()
-        except Exception:
-            continue
+            print(f"  GET {MF_URL}")
+            page.goto(MF_URL, wait_until="domcontentloaded")
+            page.wait_for_selector("table", timeout=PAGE_TIMEOUT)
 
-        prices: dict = {}
-        items = data if isinstance(data, list) else (data.get("data") or data.get("paliva") or [])
+            rows = page.query_selector_all("table tr")
+            print(f"  Nalezeno řádků v tabulkách: {len(rows)}")
 
-        for item in (items if isinstance(items, list) else [data]):
-            if not isinstance(item, dict):
-                continue
-            name = str(item.get("nazev", "") + " " + item.get("name", "") + " " + item.get("typ", "")).lower()
-            raw_price = item.get("cena") or item.get("price") or item.get("hodnota")
-            price = _parse_price(str(raw_price)) if raw_price is not None else None
-            if price is None:
-                continue
-            if "95" in name and ("natural" in name or "benzin" in name or "ba" in name):
-                prices.setdefault("natural95", price)
-            elif "nafta" in name or "diesel" in name:
-                prices.setdefault("diesel", price)
-            elif "98" in name and ("natural" in name or "benzin" in name or "ba" in name):
-                prices.setdefault("natural98", price)
-            elif "lpg" in name:
-                prices.setdefault("lpg", price)
+            natural95_cap: float | None = None
+            diesel_cap:    float | None = None
 
-        if len(prices) >= 2:
-            print(f"  kurzy.cz API: úspěch — {prices}")
-            return _normalize(prices)
-
-    print("  kurzy.cz API: nepodařilo se získat data")
-    return None
-
-
-# ---------------------------------------------------------------------------
-# Zdroj 3: kurzy.cz — scraping HTML stránky
-# ---------------------------------------------------------------------------
-
-def fetch_from_kurzy_scrape() -> dict | None:
-    """
-    Scrapuje ceny z HTML stránky kurzy.cz/komodity/benzin-cena/
-    """
-    pages = [
-        ("natural95", "https://www.kurzy.cz/komodity/benzin-cena/"),
-        ("diesel",    "https://www.kurzy.cz/komodity/nafta-cena/"),
-        ("natural98", "https://www.kurzy.cz/komodity/natural-98-cena/"),
-        ("lpg",       "https://www.kurzy.cz/komodity/lpg-cena/"),
-    ]
-
-    prices: dict = {}
-    for fuel_key, url in pages:
-        try:
-            r = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
-            r.raise_for_status()
-            soup = BeautifulSoup(r.text, "lxml")
-
-            # Hledáme "aktuální cena" element
-            price = None
-            for selector in [
-                ".current-price", ".cena", "#cena", ".price-actual",
-                "[class*='current']", "[class*='price']",
-            ]:
-                tag = soup.select_one(selector)
-                if tag:
-                    price = _parse_price(tag.get_text(strip=True))
-                    if price:
-                        break
-
-            # Fallback: projdi všechny tabulky a hledej číslo s Kč
-            if not price:
-                for td in soup.find_all(["td", "span", "div"]):
-                    txt = td.get_text(strip=True)
-                    if "kč" in txt.lower() or "czk" in txt.lower():
-                        price = _parse_price(txt)
-                        if price:
-                            break
-
-            if price:
-                prices[fuel_key] = price
-                print(f"  kurzy.cz scrape {fuel_key}: {price}")
-
-        except Exception as e:
-            print(f"  kurzy.cz scrape {fuel_key}: chyba — {e}")
-
-    if len(prices) >= 2:
-        return _normalize(prices)
-    return None
-
-
-# ---------------------------------------------------------------------------
-# Zdroj 4: GreenCar.cz
-# ---------------------------------------------------------------------------
-
-def fetch_from_greencar() -> dict | None:
-    """
-    GreenCar.cz publikuje průměrné ceny pohonných hmot.
-    """
-    url = "https://www.greencar.cz/ceny-pohonnych-hmot/"
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
-        r.raise_for_status()
-    except Exception as e:
-        print(f"  GreenCar: request failed — {e}")
-        return None
-
-    soup = BeautifulSoup(r.text, "lxml")
-    prices: dict = {}
-
-    for table in soup.find_all("table"):
-        for row in table.find_all("tr"):
-            cells = row.find_all(["td", "th"])
-            if len(cells) < 2:
-                continue
-            label = cells[0].get_text(" ", strip=True).lower()
-            for cell in reversed(cells[1:]):
-                price = _parse_price(cell.get_text(strip=True))
-                if price is None:
+            for row in rows:
+                cells = row.query_selector_all("td, th")
+                if len(cells) < 2:
                     continue
-                if "95" in label:
-                    prices.setdefault("natural95", price)
-                elif "nafta" in label or "diesel" in label:
-                    prices.setdefault("diesel", price)
-                elif "98" in label:
-                    prices.setdefault("natural98", price)
-                elif "lpg" in label:
-                    prices.setdefault("lpg", price)
-                break
 
-    if len(prices) >= 2:
-        print(f"  GreenCar: úspěch — {prices}")
-        return _normalize(prices)
+                texts    = [c.inner_text().strip() for c in cells]
+                row_lower = " ".join(texts).lower()
 
-    print("  GreenCar: nepodařilo se parsovat data")
-    return None
+                # --- Natural 95 ---
+                if natural95_cap is None:
+                    is_n95 = (
+                        "natural 95" in row_lower
+                        or "natural95"  in row_lower
+                        or "ba 95"      in row_lower
+                        or ("95" in row_lower and ("benzin" in row_lower or "natural" in row_lower))
+                    )
+                    if is_n95:
+                        for t in reversed(texts[1:]):
+                            p = parse_price(t)
+                            if p:
+                                natural95_cap = p
+                                print(f"  Natural 95 cap = {p} Kč/l  ← '{t}'")
+                                break
+
+                # --- Nafta B7 ---
+                if diesel_cap is None:
+                    is_b7 = (
+                        "b7" in row_lower
+                        or "motorová nafta" in row_lower
+                        or ("nafta" in row_lower and "b7" in row_lower)
+                        or ("diesel" in row_lower and "b7" in row_lower)
+                        # širší match: řádek obsahuje jen "nafta" bez dalšího upřesnění
+                        or (
+                            "nafta" in row_lower
+                            and "natural" not in row_lower
+                            and natural95_cap is not None  # Natural 95 jsme už zpracovali
+                        )
+                    )
+                    if is_b7:
+                        for t in reversed(texts[1:]):
+                            p = parse_price(t)
+                            if p:
+                                diesel_cap = p
+                                print(f"  Nafta B7 cap   = {p} Kč/l  ← '{t}'")
+                                break
+
+                if natural95_cap and diesel_cap:
+                    break  # máme obě ceny, nepokračujeme
+
+            # --- Fallback debug výpis ---
+            if not (natural95_cap and diesel_cap):
+                print("  WARN: nepodařilo se automaticky určit obě ceny.")
+                print("  Vypisuji všechny řádky tabulky s číselnou hodnotou:")
+                for row in rows:
+                    cells = row.query_selector_all("td, th")
+                    texts = [c.inner_text().strip() for c in cells]
+                    if any(parse_price(t) for t in texts):
+                        print(f"    {texts}")
+                return None
+
+            return {
+                "natural95_cap": round(natural95_cap, 2),
+                "diesel_cap":    round(diesel_cap,    2),
+            }
+
+        except PlaywrightTimeout:
+            print("  CHYBA: Timeout při načítání stránky MF ČR")
+            return None
+        except Exception as exc:
+            print(f"  CHYBA: {exc}")
+            return None
+        finally:
+            browser.close()
 
 
 # ---------------------------------------------------------------------------
@@ -291,82 +190,61 @@ def load_existing() -> dict:
     except (FileNotFoundError, json.JSONDecodeError):
         return {
             "last_updated": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-            "current": {
-                "natural95": 37.20,
-                "diesel": 36.10,
-                "natural98": 40.50,
-                "lpg": 19.20,
-            },
-            "history": [],
-            "government_cap": {
-                "active": False,
-                "cap_price_natural95": None,
-                "cap_price_diesel": None,
-                "info": "",
-            },
+            "valid_from":   date.today().isoformat(),
+            "current":      {},
+            "history":      [],
         }
 
 
 def save_prices(new_prices: dict) -> None:
-    existing = load_existing()
-    today_str = date.today().isoformat()
-    now_str = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-
-    # Doplň chybějící paliva ze stávajících dat
-    for key in ("natural95", "diesel", "natural98", "lpg"):
-        if key not in new_prices:
-            new_prices[key] = existing["current"].get(key)
+    existing  = load_existing()
+    now_str   = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    vf        = valid_from_date()
 
     existing["last_updated"] = now_str
-    existing["current"] = new_prices
+    existing["valid_from"]   = vf
+    existing["current"]      = new_prices
 
-    # Aktualizuj historii
-    history: list = existing.get("history", [])
-    history = [h for h in history if h.get("date") != today_str]
-    history.append({"date": today_str, **new_prices})
+    # Přepíšeme záznam pro den valid_from (ne pro dnešek)
+    history = existing.get("history", [])
+    history = [h for h in history if h.get("date") != vf]
+    history.append({"date": vf, **new_prices})
     history.sort(key=lambda x: x["date"])
-    existing["history"] = history[-90:]  # Uchovej max 90 dní
+    existing["history"] = history[-30:]
 
     os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(existing, f, ensure_ascii=False, indent=2)
 
-    print(f"✓ Uloženo: {new_prices}")
+    print(f"✓ Uloženo — valid_from: {vf}, ceny: {new_prices}")
 
 
 # ---------------------------------------------------------------------------
-# Main
+# Entrypoint
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    print("=== Stahuji ceny pohonných hmot ===")
-    print(f"Datum: {date.today().isoformat()}")
+    today   = date.today()
+    weekday = today.weekday()  # 0 = pondělí, 4 = pátek
 
-    sources = [
-        ("CCS.cz",           fetch_from_ccs),
-        ("kurzy.cz API",     fetch_from_kurzy_api),
-        ("kurzy.cz scrape",  fetch_from_kurzy_scrape),
-        ("GreenCar.cz",      fetch_from_greencar),
-    ]
+    print("=== Maximální přípustné ceny paliv — MF ČR ===")
+    print(f"Dnešní datum : {today.isoformat()} ({['Po','Út','St','Čt','Pá','So','Ne'][weekday]})")
+    print(f"Ceny platí od: {valid_from_date()}")
 
+    print("\n→ Načítám data z MF ČR (Playwright/Chromium)…")
     prices = None
-    for name, fn in sources:
-        print(f"\n→ Zkouším {name}…")
-        try:
-            prices = fn()
-        except Exception as e:
-            print(f"  Neočekávaná chyba: {e}")
-            prices = None
+    try:
+        prices = fetch_from_mf()
+    except Exception as exc:
+        print(f"  Neočekávaná chyba: {exc}")
 
-        if prices and len(prices) >= 2:
-            print(f"✓ Data získána z {name}")
-            break
-    else:
-        print("\n⚠️  Všechny zdroje selhaly. Ponechávám stávající data.")
-        sys.exit(0)
+    if not prices:
+        print("\n⚠️  Data se nepodařilo získat. Stávající data jsou zachována.")
+        sys.exit(0)  # Workflow nespadne, zachová poslední platná data
 
+    print(f"\n✓ Data získána: {prices}")
     save_prices(prices)
-    print("\n=== Hotovo ===")
+    print("=== Hotovo ===")
 
 
 if __name__ == "__main__":
