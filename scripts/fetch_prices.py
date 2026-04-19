@@ -7,9 +7,12 @@ Zdroj:
   https://mf.gov.cz/cs/kontrola-a-regulace/cenova-regulace-a-kontrola/
   maximalni-pripustne-ceny-benzinu-a-nafty
 
-Logika platnosti cen:
-  - Po–Čt: ceny vydané dnes platí pro ZÍTŘEK
-  - Pá:    ceny vydané v pátek platí pro pátek, sobotu, neděli i pondělí
+Ceny jsou publikovány v textu článku (ne v HTML tabulce). Script
+parsuje prostý text stránky regexem.
+
+Logika platnosti (fallback pokud datum nelze přečíst ze stránky):
+  - Po–Čt: vydané ceny platí pro ZÍTŘEK
+  - Pá:    vydané ceny platí pro pátek, So, Ne i Po
 """
 
 import json
@@ -34,38 +37,96 @@ MF_URL = (
 
 PAGE_TIMEOUT = 30_000  # ms
 
+# ---------------------------------------------------------------------------
+# České názvy měsíců → číslo
+# ---------------------------------------------------------------------------
+
+MONTHS_CS: dict[str, str] = {
+    "ledna":    "01", "února":    "02", "března":   "03", "dubna":    "04",
+    "května":   "05", "června":   "06", "července": "07", "srpna":    "08",
+    "září":     "09", "října":    "10", "listopadu": "11", "prosince": "12",
+}
 
 # ---------------------------------------------------------------------------
-# Datum platnosti
+# Zkompilované regexpy
 # ---------------------------------------------------------------------------
 
-def valid_from_date() -> str:
+# "Maximální přípustná cena benzinu: 41,33 Kč s DPH / litr"
+RE_N95_CAP = re.compile(
+    r"Maximáln[íi]\s+p[řr][íi]pustn[áa]\s+cena\s+benzinu[^:\n]*"
+    r":\s*([\d]+[,.]?\d*)\s*Kč",
+    re.IGNORECASE,
+)
+
+# "Maximální přípustná cena nafty: 43,13 Kč s DPH / litr"
+RE_DIESEL_CAP = re.compile(
+    r"Maximáln[íi]\s+p[řr][íi]pustn[áa]\s+cena\s+nafty[^:\n]*"
+    r":\s*([\d]+[,.]?\d*)\s*Kč",
+    re.IGNORECASE,
+)
+
+# "Hypotetická cena benzinu bez regulace marží: 46,78 Kč s DPH / litr"
+RE_N95_HYPO = re.compile(
+    r"Hypotetick[áa]\s+cena\s+benzinu[^:\n]*"
+    r":\s*([\d]+[,.]?\d*)\s*Kč",
+    re.IGNORECASE,
+)
+
+# "Hypotetická cena nafty bez regulace marží a daňových změn: 50,31 Kč s DPH / litr"
+RE_DIESEL_HYPO = re.compile(
+    r"Hypotetick[áa]\s+cena\s+nafty[^:\n]*"
+    r":\s*([\d]+[,.]?\d*)\s*Kč",
+    re.IGNORECASE,
+)
+
+# "Účinnost: od 18. dubna 2026 00:00 do 20. dubna 2026 24:00 na celém území ČR"
+RE_VALIDITY = re.compile(
+    r"Účinnost[^:\n]*:\s*od\s+(\d{1,2}\.\s*\w+\s+\d{4})"
+    r".*?do\s+(\d{1,2}\.\s*\w+\s+\d{4})",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+# ---------------------------------------------------------------------------
+# Pomocné funkce
+# ---------------------------------------------------------------------------
+
+def parse_czech_date(text: str) -> str | None:
+    """'18. dubna 2026' → '2026-04-18'; vrátí None pokud parsování selže."""
+    m = re.search(r"(\d{1,2})\.\s*(\w+)\s+(\d{4})", text.strip())
+    if not m:
+        return None
+    day       = int(m.group(1))
+    month_cs  = m.group(2).lower()
+    year      = m.group(3)
+    month     = MONTHS_CS.get(month_cs)
+    if not month:
+        print(f"  WARN: neznámý název měsíce '{month_cs}'")
+        return None
+    return f"{year}-{month}-{day:02d}"
+
+
+def extract_price(m: re.Match | None) -> float | None:
+    """Z regex match vytáhne číslo a ověří rozsah 15–100 Kč/l."""
+    if not m:
+        return None
+    try:
+        val = float(m.group(1).replace(",", "."))
+        return round(val, 2) if 15.0 <= val <= 100.0 else None
+    except ValueError:
+        return None
+
+
+def fallback_valid_from() -> str:
     """
-    Vrátí datum, od kterého vydané ceny platí:
-      - pátek (weekday=4): platí od dnešního pátku
-      - Po–Čt:             platí od zítřka
+    Fallback datum platnosti (pokud ho nelze přečíst ze stránky):
+      - pátek  → dnešní datum
+      - Po–Čt  → zítřek
     """
     today = date.today()
-    if today.weekday() == 4:
+    if today.weekday() == 4:  # pátek
         return today.isoformat()
     return (today + timedelta(days=1)).isoformat()
-
-
-# ---------------------------------------------------------------------------
-# Parsování ceny
-# ---------------------------------------------------------------------------
-
-def parse_price(text: str) -> float | None:
-    """'41,67 Kč/l' nebo '44.36' → 44.36; vrátí None pokud není v rozsahu 15–100."""
-    if not text:
-        return None
-    cleaned = text.strip().replace("\xa0", "").replace("\u202f", "").replace(" ", "")
-    m = re.search(r"(\d{2,3})[,.](\d{1,2})", cleaned)
-    if m:
-        val = float(f"{m.group(1)}.{m.group(2)}")
-        if 15.0 <= val <= 100.0:
-            return val
-    return None
 
 
 # ---------------------------------------------------------------------------
@@ -74,11 +135,14 @@ def parse_price(text: str) -> float | None:
 
 def fetch_from_mf() -> dict | None:
     """
-    Načte stránku MF ČR a z tabulky vytáhne maximální ceny:
-      natural95_cap  — Natural 95 (Kč/l)
-      diesel_cap     — Motorová nafta B7 (Kč/l)
-
-    Vrátí dict nebo None při selhání.
+    Načte stránku MF ČR, parsuje textový obsah a vrátí:
+      {
+        "prices":     { "natural95_cap": float, "diesel_cap": float,
+                        "natural95_without_cap": float?, "diesel_without_cap": float? },
+        "valid_from": "YYYY-MM-DD",
+        "valid_to":   "YYYY-MM-DD" | None,
+      }
+    Nebo None při selhání.
     """
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
@@ -96,78 +160,63 @@ def fetch_from_mf() -> dict | None:
         try:
             print(f"  GET {MF_URL}")
             page.goto(MF_URL, wait_until="domcontentloaded")
-            page.wait_for_selector("table", timeout=PAGE_TIMEOUT)
 
-            rows = page.query_selector_all("table tr")
-            print(f"  Nalezeno řádků v tabulkách: {len(rows)}")
+            # Počkáme na hlavní obsah článku; při selhání fallback na networkidle
+            try:
+                page.wait_for_selector(
+                    "main, article, #main, .content",
+                    timeout=PAGE_TIMEOUT,
+                )
+            except PlaywrightTimeout:
+                print("  INFO: selektor hlavního obsahu nenalezen, čekám na networkidle…")
+                page.wait_for_load_state("networkidle", timeout=PAGE_TIMEOUT)
 
-            natural95_cap: float | None = None
-            diesel_cap:    float | None = None
+            # Celý textový obsah stránky
+            text = page.inner_text("body")
 
-            for row in rows:
-                cells = row.query_selector_all("td, th")
-                if len(cells) < 2:
-                    continue
+            # ---- Debug výpis ----
+            print("\n--- STRÁNKA (prvních 2000 znaků) ---")
+            print(text[:2000])
+            print("--- KONEC VÝPISU ---\n")
 
-                texts    = [c.inner_text().strip() for c in cells]
-                row_lower = " ".join(texts).lower()
+            # ---- Parsování cen ----
+            n95_cap     = extract_price(RE_N95_CAP.search(text))
+            diesel_cap  = extract_price(RE_DIESEL_CAP.search(text))
+            n95_hypo    = extract_price(RE_N95_HYPO.search(text))
+            diesel_hypo = extract_price(RE_DIESEL_HYPO.search(text))
 
-                # --- Natural 95 ---
-                if natural95_cap is None:
-                    is_n95 = (
-                        "natural 95" in row_lower
-                        or "natural95"  in row_lower
-                        or "ba 95"      in row_lower
-                        or ("95" in row_lower and ("benzin" in row_lower or "natural" in row_lower))
-                    )
-                    if is_n95:
-                        for t in reversed(texts[1:]):
-                            p = parse_price(t)
-                            if p:
-                                natural95_cap = p
-                                print(f"  Natural 95 cap = {p} Kč/l  ← '{t}'")
-                                break
+            print(f"  Natural 95 cap        : {n95_cap}")
+            print(f"  Nafta cap             : {diesel_cap}")
+            print(f"  Natural 95 bez regulace: {n95_hypo}")
+            print(f"  Nafta bez regulace    : {diesel_hypo}")
 
-                # --- Nafta B7 ---
-                if diesel_cap is None:
-                    is_b7 = (
-                        "b7" in row_lower
-                        or "motorová nafta" in row_lower
-                        or ("nafta" in row_lower and "b7" in row_lower)
-                        or ("diesel" in row_lower and "b7" in row_lower)
-                        # širší match: řádek obsahuje jen "nafta" bez dalšího upřesnění
-                        or (
-                            "nafta" in row_lower
-                            and "natural" not in row_lower
-                            and natural95_cap is not None  # Natural 95 jsme už zpracovali
-                        )
-                    )
-                    if is_b7:
-                        for t in reversed(texts[1:]):
-                            p = parse_price(t)
-                            if p:
-                                diesel_cap = p
-                                print(f"  Nafta B7 cap   = {p} Kč/l  ← '{t}'")
-                                break
-
-                if natural95_cap and diesel_cap:
-                    break  # máme obě ceny, nepokračujeme
-
-            # --- Fallback debug výpis ---
-            if not (natural95_cap and diesel_cap):
-                print("  WARN: nepodařilo se automaticky určit obě ceny.")
-                print("  Vypisuji všechny řádky tabulky s číselnou hodnotou:")
-                for row in rows:
-                    cells = row.query_selector_all("td, th")
-                    texts = [c.inner_text().strip() for c in cells]
-                    if any(parse_price(t) for t in texts):
-                        print(f"    {texts}")
+            if not n95_cap or not diesel_cap:
+                print("  CHYBA: Maximální ceny nebyly nalezeny v textu stránky.")
                 return None
 
-            return {
-                "natural95_cap": round(natural95_cap, 2),
-                "diesel_cap":    round(diesel_cap,    2),
-            }
+            # ---- Parsování platnosti ----
+            valid_from: str | None = None
+            valid_to:   str | None = None
+
+            vm = RE_VALIDITY.search(text)
+            if vm:
+                valid_from = parse_czech_date(vm.group(1))
+                valid_to   = parse_czech_date(vm.group(2))
+                print(f"  Účinnost od: {valid_from}  do: {valid_to}")
+            else:
+                print("  WARN: 'Účinnost' řádek nenalezen v textu.")
+
+            if not valid_from:
+                valid_from = fallback_valid_from()
+                print(f"  Platnost od (fallback weekday): {valid_from}")
+
+            prices: dict = {"natural95_cap": n95_cap, "diesel_cap": diesel_cap}
+            if n95_hypo    is not None:
+                prices["natural95_without_cap"] = n95_hypo
+            if diesel_hypo is not None:
+                prices["diesel_without_cap"] = diesel_hypo
+
+            return {"prices": prices, "valid_from": valid_from, "valid_to": valid_to}
 
         except PlaywrightTimeout:
             print("  CHYBA: Timeout při načítání stránky MF ČR")
@@ -189,26 +238,38 @@ def load_existing() -> dict:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {
-            "last_updated": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-            "valid_from":   date.today().isoformat(),
-            "current":      {},
-            "history":      [],
+            "last_updated":  datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            "valid_from":    date.today().isoformat(),
+            "valid_to":      None,
+            "current":       {},
+            "government_cap": {"active": True},
+            "history":       [],
         }
 
 
-def save_prices(new_prices: dict) -> None:
-    existing  = load_existing()
-    now_str   = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-    vf        = valid_from_date()
+def save_prices(result: dict) -> None:
+    existing   = load_existing()
+    now_str    = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    prices     = result["prices"]
+    vf         = result["valid_from"]
+    vt         = result.get("valid_to")
 
     existing["last_updated"] = now_str
     existing["valid_from"]   = vf
-    existing["current"]      = new_prices
+    existing["valid_to"]     = vt
+    existing["current"]      = prices
+    existing["government_cap"] = {
+        "active":             True,
+        "cap_price_natural95": prices["natural95_cap"],
+        "cap_price_diesel":    prices["diesel_cap"],
+        "valid_from":          vf,
+        "valid_to":            vt,
+    }
 
-    # Přepíšeme záznam pro den valid_from (ne pro dnešek)
-    history = existing.get("history", [])
+    # Záznam v historii je indexován datem platnosti (valid_from)
+    history: list = existing.get("history", [])
     history = [h for h in history if h.get("date") != vf]
-    history.append({"date": vf, **new_prices})
+    history.append({"date": vf, **prices})
     history.sort(key=lambda x: x["date"])
     existing["history"] = history[-30:]
 
@@ -216,7 +277,8 @@ def save_prices(new_prices: dict) -> None:
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(existing, f, ensure_ascii=False, indent=2)
 
-    print(f"✓ Uloženo — valid_from: {vf}, ceny: {new_prices}")
+    print(f"✓ Uloženo — valid_from: {vf}, valid_to: {vt}")
+    print(f"  Ceny: {prices}")
 
 
 # ---------------------------------------------------------------------------
@@ -225,26 +287,26 @@ def save_prices(new_prices: dict) -> None:
 
 def main() -> None:
     today   = date.today()
-    weekday = today.weekday()  # 0 = pondělí, 4 = pátek
+    weekday = today.weekday()
+    dny     = ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"]
 
     print("=== Maximální přípustné ceny paliv — MF ČR ===")
-    print(f"Dnešní datum : {today.isoformat()} ({['Po','Út','St','Čt','Pá','So','Ne'][weekday]})")
-    print(f"Ceny platí od: {valid_from_date()}")
+    print(f"Datum spuštění : {today.isoformat()} ({dny[weekday]})")
+    print(f"Fallback valid_from: {fallback_valid_from()}")
 
     print("\n→ Načítám data z MF ČR (Playwright/Chromium)…")
-    prices = None
+    result = None
     try:
-        prices = fetch_from_mf()
+        result = fetch_from_mf()
     except Exception as exc:
         print(f"  Neočekávaná chyba: {exc}")
 
-    if not prices:
-        print("\n⚠️  Data se nepodařilo získat. Stávající data jsou zachována.")
-        sys.exit(0)  # Workflow nespadne, zachová poslední platná data
+    if not result:
+        print("\n⚠️  Data se nepodařilo získat. Stávající prices.json je zachován beze změny.")
+        sys.exit(0)  # Workflow nespadne, GitHub Actions necommitne nic
 
-    print(f"\n✓ Data získána: {prices}")
-    save_prices(prices)
-    print("=== Hotovo ===")
+    save_prices(result)
+    print("\n=== Hotovo ===")
 
 
 if __name__ == "__main__":
