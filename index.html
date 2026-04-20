@@ -924,6 +924,13 @@ async function init() {
   renderNextDay(DATA);
 }
 
+function ndDiff(ndPrice, curPrice) {
+  const diff = Math.round((ndPrice - curPrice) * 100) / 100;
+  if (diff === 0) return `<span style="color:var(--ink-3)">beze změny</span>`;
+  if (diff < 0)   return `<span style="color:var(--accent)">−${fmt(Math.abs(diff))} Kč</span>`;
+                  return `<span style="color:var(--brand)">+${fmt(diff)} Kč</span>`;
+}
+
 function renderNextDay(data) {
   const nd = data.next_day;
   const container = document.getElementById('nd-container');
@@ -933,23 +940,18 @@ function renderNextDay(data) {
   }
   const vf = nd.valid_from || data.valid_from;
   const dateLabel = fmtDate(vf);
+  const c = data.current;
   document.getElementById('nd-subtitle').textContent = 'od ' + dateLabel;
-  const savings95 = nd.natural95_without_cap != null
-    ? `<div class="pc-compare"><span class="lbl">Tržní cena bez stropu</span><span class="val">${fmt(nd.natural95_without_cap)} Kč</span></div><div class="pc-savings"><span class="k">Úspora na litru</span><span class="v">−${fmt(nd.natural95_without_cap - nd.natural95_cap)} Kč</span></div>`
-    : '';
-  const savingsDiesel = nd.diesel_without_cap != null
-    ? `<div class="pc-compare"><span class="lbl">Tržní cena bez stropu</span><span class="val">${fmt(nd.diesel_without_cap)} Kč</span></div><div class="pc-savings"><span class="k">Úspora na litru</span><span class="v">−${fmt(nd.diesel_without_cap - nd.diesel_cap)} Kč</span></div>`
-    : '';
   container.innerHTML = `<div class="price-grid">
     <div class="price-card price-card--next">
       <div class="pc-head"><span class="pc-type">Natural 95</span><span class="pc-tag nd-badge">Od ${dateLabel}</span></div>
       <div class="pc-price"><span class="num">${fmt(nd.natural95_cap)}</span><span class="unit">Kč/l</span></div>
-      ${savings95}
+      <div class="pc-compare"><span class="lbl">Oproti dnešku</span><span class="val" style="text-decoration:none;font-weight:600">${ndDiff(nd.natural95_cap, c.natural95_cap)}</span></div>
     </div>
     <div class="price-card price-card--next">
       <div class="pc-head"><span class="pc-type">Nafta B7</span><span class="pc-tag nd-badge">Od ${dateLabel}</span></div>
       <div class="pc-price"><span class="num">${fmt(nd.diesel_cap)}</span><span class="unit">Kč/l</span></div>
-      ${savingsDiesel}
+      <div class="pc-compare"><span class="lbl">Oproti dnešku</span><span class="val" style="text-decoration:none;font-weight:600">${ndDiff(nd.diesel_cap, c.diesel_cap)}</span></div>
     </div>
   </div>`;
 }
