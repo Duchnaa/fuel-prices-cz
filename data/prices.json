@@ -1,30 +1,111 @@
 {
-  "last_updated": "2026-04-19T14:30:00",
-  "valid_from": "2026-04-18",
-  "valid_to": "2026-04-20",
+  "last_updated": "2026-04-20T14:16:36",
+  "valid_from": "2026-04-21",
+  "valid_to": null,
   "current": {
-    "natural95_cap": 41.33,
-    "diesel_cap": 43.13,
-    "natural95_without_cap": 46.78,
-    "diesel_without_cap": 50.31
+    "natural95_cap": 40.64,
+    "diesel_cap": 40.86,
+    "natural95_without_cap": 46.09,
+    "diesel_without_cap": 48.04
   },
   "government_cap": {
     "active": true,
-    "valid_from": "2026-04-18",
-    "valid_to": "2026-04-20"
+    "cap_price_natural95": 40.64,
+    "cap_price_diesel": 40.86,
+    "valid_from": "2026-04-21",
+    "valid_to": null
   },
   "history": [
-    {"date": "2026-04-08", "natural95_cap": 43.15, "diesel_cap": 49.59, "natural95_without_cap": 43.15, "diesel_without_cap": 49.59},
-    {"date": "2026-04-09", "natural95_cap": 43.05, "diesel_cap": 49.40, "natural95_without_cap": 48.50, "diesel_without_cap": 56.59},
-    {"date": "2026-04-10", "natural95_cap": 41.77, "diesel_cap": 45.20, "natural95_without_cap": 47.21, "diesel_without_cap": 52.38},
-    {"date": "2026-04-11", "natural95_cap": 41.95, "diesel_cap": 45.90, "natural95_without_cap": 47.39, "diesel_without_cap": 53.09},
-    {"date": "2026-04-12", "natural95_cap": 41.95, "diesel_cap": 45.90, "natural95_without_cap": 47.39, "diesel_without_cap": 53.09},
-    {"date": "2026-04-13", "natural95_cap": 41.95, "diesel_cap": 45.90, "natural95_without_cap": 47.39, "diesel_without_cap": 53.09},
-    {"date": "2026-04-14", "natural95_cap": 41.67, "diesel_cap": 44.36, "natural95_without_cap": 47.12, "diesel_without_cap": 51.55},
-    {"date": "2026-04-15", "natural95_cap": 42.10, "diesel_cap": 45.00, "natural95_without_cap": 47.55, "diesel_without_cap": 52.19},
-    {"date": "2026-04-16", "natural95_cap": 41.59, "diesel_cap": 43.50, "natural95_without_cap": 47.04, "diesel_without_cap": 50.69},
-    {"date": "2026-04-17", "natural95_cap": 41.36, "diesel_cap": 43.36, "natural95_without_cap": 46.80, "diesel_without_cap": 50.55},
-    {"date": "2026-04-18", "natural95_cap": 41.33, "diesel_cap": 43.13, "natural95_without_cap": 46.78, "diesel_without_cap": 50.31},
-    {"date": "2026-04-19", "natural95_cap": 41.33, "diesel_cap": 43.13, "natural95_without_cap": 46.78, "diesel_without_cap": 50.31}
+    {
+      "date": "2026-04-08",
+      "natural95_cap": 43.15,
+      "diesel_cap": 49.59,
+      "natural95_without_cap": 43.15,
+      "diesel_without_cap": 49.59
+    },
+    {
+      "date": "2026-04-09",
+      "natural95_cap": 43.05,
+      "diesel_cap": 49.4,
+      "natural95_without_cap": 48.5,
+      "diesel_without_cap": 56.59
+    },
+    {
+      "date": "2026-04-10",
+      "natural95_cap": 41.77,
+      "diesel_cap": 45.2,
+      "natural95_without_cap": 47.21,
+      "diesel_without_cap": 52.38
+    },
+    {
+      "date": "2026-04-11",
+      "natural95_cap": 41.95,
+      "diesel_cap": 45.9,
+      "natural95_without_cap": 47.39,
+      "diesel_without_cap": 53.09
+    },
+    {
+      "date": "2026-04-12",
+      "natural95_cap": 41.95,
+      "diesel_cap": 45.9,
+      "natural95_without_cap": 47.39,
+      "diesel_without_cap": 53.09
+    },
+    {
+      "date": "2026-04-13",
+      "natural95_cap": 41.95,
+      "diesel_cap": 45.9,
+      "natural95_without_cap": 47.39,
+      "diesel_without_cap": 53.09
+    },
+    {
+      "date": "2026-04-14",
+      "natural95_cap": 41.67,
+      "diesel_cap": 44.36,
+      "natural95_without_cap": 47.12,
+      "diesel_without_cap": 51.55
+    },
+    {
+      "date": "2026-04-15",
+      "natural95_cap": 42.1,
+      "diesel_cap": 45.0,
+      "natural95_without_cap": 47.55,
+      "diesel_without_cap": 52.19
+    },
+    {
+      "date": "2026-04-16",
+      "natural95_cap": 41.59,
+      "diesel_cap": 43.5,
+      "natural95_without_cap": 47.04,
+      "diesel_without_cap": 50.69
+    },
+    {
+      "date": "2026-04-17",
+      "natural95_cap": 41.36,
+      "diesel_cap": 43.36,
+      "natural95_without_cap": 46.8,
+      "diesel_without_cap": 50.55
+    },
+    {
+      "date": "2026-04-18",
+      "natural95_cap": 41.33,
+      "diesel_cap": 43.13,
+      "natural95_without_cap": 46.78,
+      "diesel_without_cap": 50.31
+    },
+    {
+      "date": "2026-04-19",
+      "natural95_cap": 41.33,
+      "diesel_cap": 43.13,
+      "natural95_without_cap": 46.78,
+      "diesel_without_cap": 50.31
+    },
+    {
+      "date": "2026-04-21",
+      "natural95_cap": 40.64,
+      "diesel_cap": 40.86,
+      "natural95_without_cap": 46.09,
+      "diesel_without_cap": 48.04
+    }
   ]
 }
