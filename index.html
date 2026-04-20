@@ -891,7 +891,7 @@ function enrichHistory(hist, currentWo) {
 
 async function init() {
   try {
-    DATA = await fetch('./data/prices.json').then(r => r.json());
+    DATA = await fetch('./data/prices.json?v=' + Date.now()).then(r => r.json());
   } catch(e) {
     console.error(e);
     return;
