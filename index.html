@@ -565,6 +565,30 @@ h1.hero .brand-word {
   font-weight: 600;
 }
 
+/* ===== NEXT DAY PRICES ===== */
+.nd-placeholder {
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  padding: 28px 26px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--ink-3);
+}
+.nd-ph-icon { font-size: 18px; line-height: 1; flex-shrink: 0; }
+.nd-ph-text { font-size: 14.5px; line-height: 1.5; }
+
+.price-card--next {
+  background: color-mix(in srgb, var(--warn-soft) 55%, var(--surface));
+  border-color: color-mix(in srgb, var(--warn) 22%, var(--border));
+}
+.price-card--next .pc-price .num { font-size: 44px; }
+.nd-badge {
+  background: var(--warn-soft) !important;
+  color: var(--warn) !important;
+}
+
 /* ===== FOOTER ===== */
 footer.bottom {
   padding: 40px 0 60px;
@@ -675,9 +699,17 @@ footer .ts {
     </div>
   </div>
 
+  <!-- ===== NEXT DAY PRICES ===== -->
+  <div class="sec-head">
+    <h2><span class="num">02</span>Nové ceny <span id="nd-subtitle">od zítřka</span></h2>
+    <span class="aside">Vyhlašuje MF ČR každý pracovní den ve 14:00</span>
+  </div>
+
+  <div id="nd-container"></div>
+
   <!-- ===== CHART ===== -->
   <div class="sec-head">
-    <h2><span class="num">02</span>Vývoj za 30 dní</h2>
+    <h2><span class="num">03</span>Vývoj za 30 dní</h2>
     <span class="aside" id="chart-range"></span>
   </div>
 
@@ -704,7 +736,7 @@ footer .ts {
 
   <!-- ===== CALCULATOR ===== -->
   <div class="sec-head">
-    <h2><span class="num">03</span>Kolik ušetříte</h2>
+    <h2><span class="num">04</span>Kolik ušetříte</h2>
     <span class="aside">Kalkulačka měsíční úspory</span>
   </div>
 
@@ -748,7 +780,7 @@ footer .ts {
 
   <!-- ===== INFO GRID ===== -->
   <div class="sec-head">
-    <h2><span class="num">04</span>Kontext a pravidla</h2>
+    <h2><span class="num">05</span>Kontext a pravidla</h2>
   </div>
 
   <div class="info-grid">
@@ -888,6 +920,37 @@ async function init() {
 
   drawChart();
   updateCalc();
+  renderNextDay(DATA);
+}
+
+function renderNextDay(data) {
+  const nd = data.next_day;
+  const container = document.getElementById('nd-container');
+  if (!nd) {
+    container.innerHTML = `<div class="nd-placeholder"><span class="nd-ph-icon">⏳</span><div class="nd-ph-text">Ministerstvo financí zveřejní nové ceny dnes ve 14:00</div></div>`;
+    return;
+  }
+  const vf = nd.valid_from || data.valid_from;
+  const dateLabel = fmtDate(vf);
+  document.getElementById('nd-subtitle').textContent = 'od ' + dateLabel;
+  const savings95 = nd.natural95_without_cap != null
+    ? `<div class="pc-compare"><span class="lbl">Tržní cena bez stropu</span><span class="val">${fmt(nd.natural95_without_cap)} Kč</span></div><div class="pc-savings"><span class="k">Úspora na litru</span><span class="v">−${fmt(nd.natural95_without_cap - nd.natural95_cap)} Kč</span></div>`
+    : '';
+  const savingsDiesel = nd.diesel_without_cap != null
+    ? `<div class="pc-compare"><span class="lbl">Tržní cena bez stropu</span><span class="val">${fmt(nd.diesel_without_cap)} Kč</span></div><div class="pc-savings"><span class="k">Úspora na litru</span><span class="v">−${fmt(nd.diesel_without_cap - nd.diesel_cap)} Kč</span></div>`
+    : '';
+  container.innerHTML = `<div class="price-grid">
+    <div class="price-card price-card--next">
+      <div class="pc-head"><span class="pc-type">Natural 95</span><span class="pc-tag nd-badge">Od ${dateLabel}</span></div>
+      <div class="pc-price"><span class="num">${fmt(nd.natural95_cap)}</span><span class="unit">Kč/l</span></div>
+      ${savings95}
+    </div>
+    <div class="price-card price-card--next">
+      <div class="pc-head"><span class="pc-type">Nafta B7</span><span class="pc-tag nd-badge">Od ${dateLabel}</span></div>
+      <div class="pc-price"><span class="num">${fmt(nd.diesel_cap)}</span><span class="unit">Kč/l</span></div>
+      ${savingsDiesel}
+    </div>
+  </div>`;
 }
 
 function drawChart() {
