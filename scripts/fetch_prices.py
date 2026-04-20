@@ -255,9 +255,11 @@ def save_prices(result: dict) -> None:
     vt         = result.get("valid_to")
 
     existing["last_updated"] = now_str
+    # valid_from / valid_to reflektují platnost next_day cen
     existing["valid_from"]   = vf
     existing["valid_to"]     = vt
-    existing["current"]      = prices
+    # Nové ceny jdou do next_day; current zůstává beze změny
+    existing["next_day"]     = {"valid_from": vf, **prices}
     existing["government_cap"] = {
         "active":             True,
         "cap_price_natural95": prices["natural95_cap"],
@@ -277,7 +279,7 @@ def save_prices(result: dict) -> None:
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(existing, f, ensure_ascii=False, indent=2)
 
-    print(f"✓ Uloženo — valid_from: {vf}, valid_to: {vt}")
+    print(f"✓ Uloženo do next_day — valid_from: {vf}, valid_to: {vt}")
     print(f"  Ceny: {prices}")
 
 
