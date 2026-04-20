@@ -79,11 +79,23 @@ RE_DIESEL_HYPO = re.compile(
     re.IGNORECASE,
 )
 
-# "Účinnost: od 18. dubna 2026 00:00 do 20. dubna 2026 24:00 na celém území ČR"
-RE_VALIDITY = re.compile(
+# Formát 1: "Účinnost: od 18. dubna 2026 00:00 do 20. dubna 2026 24:00 na celém území ČR"
+RE_VALIDITY_F1 = re.compile(
     r"Účinnost[^:\n]*:\s*od\s+(\d{1,2}\.\s*\w+\s+\d{4})"
     r".*?do\s+(\d{1,2}\.\s*\w+\s+\d{4})",
     re.IGNORECASE | re.DOTALL,
+)
+
+# Formát 2: "Účinnost: 21. dubna 2026 od 00:00 do 24:00 na celém území ČR"
+RE_VALIDITY_F2 = re.compile(
+    r"Účinnost[^:\n]*:\s+(\d{1,2}\.\s*\w+\s+\d{4})\s+od\s+\d{1,2}:\d{2}\s+do\s+\d{1,2}:\d{2}",
+    re.IGNORECASE,
+)
+
+# Formát 3: "Účinnost: od 21. dubna 2026 00:00 do 24:00"
+RE_VALIDITY_F3 = re.compile(
+    r"Účinnost[^:\n]*:\s*od\s+(\d{1,2}\.\s*\w+\s+\d{4})\s+\d{1,2}:\d{2}\s+do\s+\d{1,2}:\d{2}",
+    re.IGNORECASE,
 )
 
 
@@ -198,13 +210,23 @@ def fetch_from_mf() -> dict | None:
             valid_from: str | None = None
             valid_to:   str | None = None
 
-            vm = RE_VALIDITY.search(text)
-            if vm:
-                valid_from = parse_czech_date(vm.group(1))
-                valid_to   = parse_czech_date(vm.group(2))
-                print(f"  Účinnost od: {valid_from}  do: {valid_to}")
+            vm1 = RE_VALIDITY_F1.search(text)
+            vm2 = RE_VALIDITY_F2.search(text)
+            vm3 = RE_VALIDITY_F3.search(text)
+            if vm1:
+                valid_from = parse_czech_date(vm1.group(1))
+                valid_to   = parse_czech_date(vm1.group(2))
+                print(f"  Účinnost (formát 1) od: {valid_from}  do: {valid_to}")
+            elif vm2:
+                valid_from = parse_czech_date(vm2.group(1))
+                valid_to   = valid_from
+                print(f"  Účinnost (formát 2) od/do: {valid_from}")
+            elif vm3:
+                valid_from = parse_czech_date(vm3.group(1))
+                valid_to   = valid_from
+                print(f"  Účinnost (formát 3) od/do: {valid_from}")
             else:
-                print("  WARN: 'Účinnost' řádek nenalezen v textu.")
+                print("  WARN: 'Účinnost' řádek nenalezen v textu (žádný formát).")
 
             if not valid_from:
                 valid_from = fallback_valid_from()
@@ -255,11 +277,20 @@ def save_prices(result: dict) -> None:
     vt         = result.get("valid_to")
 
     existing["last_updated"] = now_str
-    # valid_from / valid_to reflektují platnost next_day cen
     existing["valid_from"]   = vf
     existing["valid_to"]     = vt
-    # Nové ceny jdou do next_day; current zůstává beze změny
-    existing["next_day"]     = {"valid_from": vf, **prices}
+
+    today_iso = date.today().isoformat()
+    if vf <= today_iso:
+        # Ceny platí dnes nebo zpětně → rovnou do current
+        existing["current"]   = prices
+        existing["next_day"]  = existing.get("next_day")  # beze změny
+        print(f"  → uloženo do current (valid_from {vf} <= dnes {today_iso})")
+    else:
+        # Ceny platí od zítřka nebo later → do next_day, current beze změny
+        existing["next_day"]  = {"valid_from": vf, **prices}
+        print(f"  → uloženo do next_day (valid_from {vf} > dnes {today_iso})")
+
     existing["government_cap"] = {
         "active":             True,
         "cap_price_natural95": prices["natural95_cap"],
