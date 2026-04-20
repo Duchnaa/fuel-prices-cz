@@ -1,34 +1,27 @@
-name: Přepnutí cen na nový den (next_day → current)
-
+name: Přepnutí cen 
 on:
   schedule:
     # 23:05 UTC = 00:05 CET (zimní čas) / 01:05 CEST (letní čas)
     - cron: "5 23 * * *"
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   midnight-switch:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-
     steps:
       - name: Checkout repozitáře
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Přepnutí next_day → current
         run: |
           python3 - <<'EOF'
           import json
-
           path = 'data/prices.json'
           with open(path, encoding='utf-8') as f:
               data = json.load(f)
-
           nd = data.get('next_day')
           if nd is not None:
               # Přesuneme next_day do current (bez valid_from — current má stejnou strukturu jako dřív)
@@ -40,7 +33,6 @@ jobs:
           else:
               print("next_day je null — žádná změna")
           EOF
-
       - name: Commit a push aktualizovaných dat
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
@@ -50,6 +42,7 @@ jobs:
             echo "Žádné změny v datech — commit přeskočen."
           else
             git commit -m "data: přepnutí cen na nový den $(date -u +%Y-%m-%d)"
+            git pull --rebase origin main
             git push
             echo "✓ data/prices.json aktualizováno a pushnuté."
           fi
