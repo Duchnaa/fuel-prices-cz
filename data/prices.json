@@ -1,7 +1,7 @@
 {
-  "last_updated": "2026-04-20T14:27:04",
+  "last_updated": "2026-04-20T14:44:52",
   "valid_from": "2026-04-21",
-  "valid_to": null,
+  "valid_to": "2026-04-21",
   "current": {
     "natural95_cap": 40.64,
     "diesel_cap": 40.86,
@@ -13,7 +13,7 @@
     "cap_price_natural95": 40.64,
     "cap_price_diesel": 40.86,
     "valid_from": "2026-04-21",
-    "valid_to": null
+    "valid_to": "2026-04-21"
   },
   "history": [
     {
