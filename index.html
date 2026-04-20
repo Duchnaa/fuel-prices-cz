@@ -908,7 +908,11 @@ async function init() {
   document.getElementById('p-diesel-save').textContent = '−' + fmt(c.diesel_without_cap - c.diesel_cap) + ' Kč';
 
   document.getElementById('m-upd').textContent = fmtTs(DATA.last_updated);
-  document.getElementById('m-valid').textContent = fmtDate(DATA.valid_from) + ' – ' + fmtDate(DATA.valid_to);
+  const vFrom = (c.valid_from || DATA.valid_from);
+  const vTo   = (c.valid_to   || DATA.valid_to);
+  document.getElementById('m-valid').textContent = (!vTo || vTo === vFrom)
+    ? 'od ' + fmtDate(vFrom)
+    : fmtDate(vFrom) + ' – ' + fmtDate(vTo);
   document.getElementById('chip-to').textContent = '30. dubna';
   document.getElementById('foot-ts').textContent = fmtTs(DATA.last_updated);
 
