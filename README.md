@@ -20,14 +20,14 @@ Statická webová stránka zobrazující aktuální průměrné ceny pohonných 
 
 ## Funkce
 
-- 📊 Aktuální ceny: Natural 95, Nafta, Nat. 98, LPG
-- 📈 Graf vývoje cen za posledních 30 dní (Chart.js)
+- 📊 Aktuální ceny: Natural 95, Nafta
+- 📈 Graf vývoje cen od 8.4. 2026
 - 🔼🔽 Barevné indikátory trendu (zelená = zlevnění, červená = zdražení)
-- 📊 Statistiky: nejlevnější/nejdražší, 7denní změna
+- 📊 Statistiky: nejlevnější/nejdražší
 - 🏛️ Banner při aktivním vládním stropu cen
 - 📱 Responzivní design (mobil + desktop)
 - 🌙 Dark mode
-- ⚡ Automatická aktualizace každý den v 8:00 UTC
+- ⚡ Automatická aktualizace každý den ve 14:05
 
 ---
 
