@@ -844,6 +844,7 @@ const MONTHS = ['ledna','února','března','dubna','května','června','červenc
 function fmt(n, dec=2) { return typeof n==='number' ? n.toFixed(dec).replace('.',',') : '—'; }
 function fmtKc(n) { return Math.round(n).toLocaleString('cs-CZ'); }
 function fmtDate(iso) {
+  if (!iso) return '—';
   const [y,m,d] = iso.split('-');
   return `${parseInt(d)}. ${MONTHS[parseInt(m)-1]} ${y}`;
 }
@@ -891,7 +892,7 @@ function enrichHistory(hist, currentWo) {
 
 async function init() {
   try {
-    DATA = await fetch('./data/prices.json?v=' + Date.now()).then(r => r.json());
+    DATA = await fetch('./data/prices.json').then(r => r.json());
   } catch(e) {
     console.error(e);
     return;
