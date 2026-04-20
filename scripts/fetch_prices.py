@@ -284,8 +284,8 @@ def save_prices(result: dict) -> None:
     if vf <= today_iso:
         # Ceny platí dnes nebo zpětně → rovnou do current
         existing["current"]   = prices
-        existing["next_day"]  = existing.get("next_day")  # beze změny
-        print(f"  → uloženo do current (valid_from {vf} <= dnes {today_iso})")
+        existing["next_day"]  = None
+        print(f"  → uloženo do current (valid_from {vf} <= dnes {today_iso}), next_day vymazán")
     else:
         # Ceny platí od zítřka nebo later → do next_day, current beze změny
         existing["next_day"]  = {"valid_from": vf, **prices}
