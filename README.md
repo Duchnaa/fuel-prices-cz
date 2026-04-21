@@ -2,7 +2,7 @@
 
 Statická webová stránka zobrazující aktuální průměrné ceny pohonných hmot v České republice s automatickou denní aktualizací přes GitHub Actions.
 
-**Live ukázka:** `https://<tvůj-username>.github.io/fuel-prices-cz/`
+**Live ukázka:** `https://duchnaa.github.io/fuel-prices-cz/`
 
 ---
 
