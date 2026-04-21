@@ -10,10 +10,6 @@ Statická webová stránka zobrazující aktuální průměrné ceny pohonných 
 
 - [Funkce](#funkce)
 - [Struktura projektu](#struktura-projektu)
-- [Jak spustit vlastní verzi](#jak-spustit-vlastní-verzi)
-- [Nastavení GitHub Pages](#nastavení-github-pages)
-- [Nastavení GitHub Actions](#nastavení-github-actions)
-- [Zdroje dat](#zdroje-dat)
 - [Lokální vývoj](#lokální-vývoj)
 
 ---
