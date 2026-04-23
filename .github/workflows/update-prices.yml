@@ -3,7 +3,7 @@ on:
   schedule:
     # Po–Pá ve 12:05 UTC = 14:05 CET (zimní čas) / 14:05 CEST (letní čas)
     # MF ČR vydává ceny kolem 14:00 CET, spouštíme 5 minut po vydání
-    - cron: "5 12 * * 1-5"
+    - cron: "6 10 * * 1-5"
   # Ruční spuštění z GitHub UI (záložka Actions → Run workflow)
   workflow_dispatch:
 permissions:
