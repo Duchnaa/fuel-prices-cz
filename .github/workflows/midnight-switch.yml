@@ -2,7 +2,7 @@ name: Přepnutí cen
 on:
   schedule:
     # 23:05 UTC = 00:05 CET (zimní čas) / 01:05 CEST (letní čas)
-    - cron: "5 23 * * *"
+    - cron: "15 21 * * *"
   workflow_dispatch:
 permissions:
   contents: write
