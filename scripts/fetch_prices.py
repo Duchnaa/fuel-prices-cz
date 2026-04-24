@@ -10,9 +10,8 @@ Zdroj:
 Ceny jsou publikovány v textu článku (ne v HTML tabulce). Script
 parsuje prostý text stránky regexem.
 
-Logika platnosti (fallback pokud datum nelze přečíst ze stránky):
-  - Po–Čt: vydané ceny platí pro ZÍTŘEK
-  - Pá:    vydané ceny platí pro pátek, So, Ne i Po
+Logika: scraper vždy ukládá do next_day.
+O přesun next_day → current se stará midnight-switch workflow.
 """
 
 import json
@@ -51,28 +50,24 @@ MONTHS_CS: dict[str, str] = {
 # Zkompilované regexpy
 # ---------------------------------------------------------------------------
 
-# "Maximální přípustná cena benzinu: 41,33 Kč s DPH / litr"
 RE_N95_CAP = re.compile(
     r"Maximáln[íi]\s+p[řr][íi]pustn[áa]\s+cena\s+benzinu[^:\n]*"
     r":\s*([\d]+[,.]?\d*)\s*Kč",
     re.IGNORECASE,
 )
 
-# "Maximální přípustná cena nafty: 43,13 Kč s DPH / litr"
 RE_DIESEL_CAP = re.compile(
     r"Maximáln[íi]\s+p[řr][íi]pustn[áa]\s+cena\s+nafty[^:\n]*"
     r":\s*([\d]+[,.]?\d*)\s*Kč",
     re.IGNORECASE,
 )
 
-# "Hypotetická cena benzinu bez regulace marží: 46,78 Kč s DPH / litr"
 RE_N95_HYPO = re.compile(
     r"Hypotetick[áa]\s+cena\s+benzinu[^:\n]*"
     r":\s*([\d]+[,.]?\d*)\s*Kč",
     re.IGNORECASE,
 )
 
-# "Hypotetická cena nafty bez regulace marží a daňových změn: 50,31 Kč s DPH / litr"
 RE_DIESEL_HYPO = re.compile(
     r"Hypotetick[áa]\s+cena\s+nafty[^:\n]*"
     r":\s*([\d]+[,.]?\d*)\s*Kč",
@@ -104,14 +99,13 @@ RE_VALIDITY_F3 = re.compile(
 # ---------------------------------------------------------------------------
 
 def parse_czech_date(text: str) -> str | None:
-    """'18. dubna 2026' → '2026-04-18'; vrátí None pokud parsování selže."""
     m = re.search(r"(\d{1,2})\.\s*(\w+)\s+(\d{4})", text.strip())
     if not m:
         return None
-    day       = int(m.group(1))
-    month_cs  = m.group(2).lower()
-    year      = m.group(3)
-    month     = MONTHS_CS.get(month_cs)
+    day      = int(m.group(1))
+    month_cs = m.group(2).lower()
+    year     = m.group(3)
+    month    = MONTHS_CS.get(month_cs)
     if not month:
         print(f"  WARN: neznámý název měsíce '{month_cs}'")
         return None
@@ -119,7 +113,6 @@ def parse_czech_date(text: str) -> str | None:
 
 
 def extract_price(m: re.Match | None) -> float | None:
-    """Z regex match vytáhne číslo a ověří rozsah 15–100 Kč/l."""
     if not m:
         return None
     try:
@@ -130,11 +123,6 @@ def extract_price(m: re.Match | None) -> float | None:
 
 
 def fallback_valid_from() -> str:
-    """
-    Fallback datum platnosti (pokud ho nelze přečíst ze stránky):
-      - pátek  → dnešní datum
-      - Po–Čt  → zítřek
-    """
     today = date.today()
     if today.weekday() == 4:  # pátek
         return today.isoformat()
@@ -146,16 +134,6 @@ def fallback_valid_from() -> str:
 # ---------------------------------------------------------------------------
 
 def fetch_from_mf() -> dict | None:
-    """
-    Načte stránku MF ČR, parsuje textový obsah a vrátí:
-      {
-        "prices":     { "natural95_cap": float, "diesel_cap": float,
-                        "natural95_without_cap": float?, "diesel_without_cap": float? },
-        "valid_from": "YYYY-MM-DD",
-        "valid_to":   "YYYY-MM-DD" | None,
-      }
-    Nebo None při selhání.
-    """
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
         context = browser.new_context(
@@ -173,7 +151,6 @@ def fetch_from_mf() -> dict | None:
             print(f"  GET {MF_URL}")
             page.goto(MF_URL, wait_until="domcontentloaded")
 
-            # Počkáme na hlavní obsah článku; při selhání fallback na networkidle
             try:
                 page.wait_for_selector(
                     "main, article, #main, .content",
@@ -183,15 +160,12 @@ def fetch_from_mf() -> dict | None:
                 print("  INFO: selektor hlavního obsahu nenalezen, čekám na networkidle…")
                 page.wait_for_load_state("networkidle", timeout=PAGE_TIMEOUT)
 
-            # Celý textový obsah stránky
             text = page.inner_text("body")
 
-            # ---- Debug výpis ----
             print("\n--- STRÁNKA (prvních 2000 znaků) ---")
             print(text[:2000])
             print("--- KONEC VÝPISU ---\n")
 
-            # ---- Parsování cen ----
             n95_cap     = extract_price(RE_N95_CAP.search(text))
             diesel_cap  = extract_price(RE_DIESEL_CAP.search(text))
             n95_hypo    = extract_price(RE_N95_HYPO.search(text))
@@ -206,7 +180,6 @@ def fetch_from_mf() -> dict | None:
                 print("  CHYBA: Maximální ceny nebyly nalezeny v textu stránky.")
                 return None
 
-            # ---- Parsování platnosti ----
             valid_from: str | None = None
             valid_to:   str | None = None
 
@@ -233,7 +206,7 @@ def fetch_from_mf() -> dict | None:
                 print(f"  Platnost od (fallback weekday): {valid_from}")
 
             prices: dict = {"natural95_cap": n95_cap, "diesel_cap": diesel_cap}
-            if n95_hypo    is not None:
+            if n95_hypo is not None:
                 prices["natural95_without_cap"] = n95_hypo
             if diesel_hypo is not None:
                 prices["diesel_without_cap"] = diesel_hypo
@@ -260,46 +233,38 @@ def load_existing() -> dict:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {
-            "last_updated":  datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-            "valid_from":    date.today().isoformat(),
-            "valid_to":      None,
-            "current":       {},
+            "last_updated":   datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            "valid_from":     date.today().isoformat(),
+            "valid_to":       None,
+            "current":        {},
+            "next_day":       None,
             "government_cap": {"active": True},
-            "history":       [],
+            "history":        [],
         }
 
 
 def save_prices(result: dict) -> None:
-    existing   = load_existing()
-    now_str    = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-    prices     = result["prices"]
-    vf         = result["valid_from"]
-    vt         = result.get("valid_to")
+    existing = load_existing()
+    now_str  = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    prices   = result["prices"]
+    vf       = result["valid_from"]
+    vt       = result.get("valid_to")
 
     existing["last_updated"] = now_str
-    existing["valid_from"]   = vf
-    existing["valid_to"]     = vt
 
-    today_iso = date.today().isoformat()
-    if vf <= today_iso:
-        # Ceny platí dnes nebo zpětně → rovnou do current
-        existing["current"]   = prices
-        existing["next_day"]  = None
-        print(f"  → uloženo do current (valid_from {vf} <= dnes {today_iso}), next_day vymazán")
-    else:
-        # Ceny platí od zítřka nebo later → do next_day, current beze změny
-        existing["next_day"]  = {"valid_from": vf, **prices}
-        print(f"  → uloženo do next_day (valid_from {vf} > dnes {today_iso})")
+    # Vždy ukládej do next_day — o přesun do current se stará midnight-switch
+    existing["next_day"] = {"valid_from": vf, "valid_to": vt, **prices}
+    print(f"  → uloženo do next_day (valid_from: {vf}, valid_to: {vt})")
 
     existing["government_cap"] = {
-        "active":             True,
+        "active":              True,
         "cap_price_natural95": prices["natural95_cap"],
         "cap_price_diesel":    prices["diesel_cap"],
         "valid_from":          vf,
         "valid_to":            vt,
     }
 
-    # Záznam v historii je indexován datem platnosti (valid_from)
+    # Historie indexována datem platnosti
     history: list = existing.get("history", [])
     history = [h for h in history if h.get("date") != vf]
     history.append({"date": vf, **prices})
@@ -310,7 +275,7 @@ def save_prices(result: dict) -> None:
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(existing, f, ensure_ascii=False, indent=2)
 
-    print(f"✓ Uloženo do next_day — valid_from: {vf}, valid_to: {vt}")
+    print(f"✓ Uloženo — valid_from: {vf}, valid_to: {vt}")
     print(f"  Ceny: {prices}")
 
 
@@ -336,7 +301,7 @@ def main() -> None:
 
     if not result:
         print("\n⚠️  Data se nepodařilo získat. Stávající prices.json je zachován beze změny.")
-        sys.exit(0)  # Workflow nespadne, GitHub Actions necommitne nic
+        sys.exit(0)
 
     save_prices(result)
     print("\n=== Hotovo ===")
