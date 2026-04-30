@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-04-29T14:33:01",
+  "last_updated": "2026-04-30T11:55:09",
   "valid_from": "2026-04-24",
   "valid_to": null,
   "current": {
@@ -158,5 +158,12 @@
       "diesel_without_cap": 50.7
     }
   ],
-  "next_day": null
+  "next_day": {
+    "valid_from": "2026-04-30",
+    "valid_to": "2026-04-30",
+    "natural95_cap": 43.13,
+    "diesel_cap": 43.51,
+    "natural95_without_cap": 48.57,
+    "diesel_without_cap": 50.7
+  }
 }
