@@ -3,11 +3,11 @@
   "valid_from": "2026-04-24",
   "valid_to": null,
   "current": {
-    "valid_to": null,
-    "natural95_cap": 45.11,
-    "diesel_cap": 42.08,
-    "natural95_without_cap": 49.73,
-    "diesel_without_cap": 48.47
+    "valid_to": "2026-05-26",
+    "natural95_cap": 44.84,
+    "diesel_cap": 41.72,
+    "natural95_without_cap": 49.28,
+    "diesel_without_cap": 47.94
   },
   "government_cap": {
     "active": true,
@@ -228,12 +228,5 @@
       "diesel_without_cap": 47.94
     }
   ],
-  "next_day": {
-    "valid_from": "2026-05-26",
-    "valid_to": "2026-05-26",
-    "natural95_cap": 44.84,
-    "diesel_cap": 41.72,
-    "natural95_without_cap": 49.28,
-    "diesel_without_cap": 47.94
-  }
+  "next_day": null
 }
