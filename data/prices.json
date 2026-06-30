@@ -3,9 +3,9 @@
   "valid_from": "2026-04-24",
   "valid_to": null,
   "current": {
-    "valid_to": "2026-06-30",
-    "natural95_cap": 40.47,
-    "diesel_cap": 36.47
+    "valid_to": "2026-07-01",
+    "natural95_cap": 40.56,
+    "diesel_cap": 36.61
   },
   "government_cap": {
     "active": true,
@@ -214,10 +214,5 @@
       "diesel_cap": 36.61
     }
   ],
-  "next_day": {
-    "valid_from": "2026-07-01",
-    "valid_to": "2026-07-01",
-    "natural95_cap": 40.56,
-    "diesel_cap": 36.61
-  }
+  "next_day": null
 }
