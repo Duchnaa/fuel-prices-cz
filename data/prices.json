@@ -208,10 +208,5 @@
       "diesel_cap": 37.16
     }
   ],
-  "next_day": {
-    "valid_from": "2026-07-07",
-    "valid_to": null,
-    "natural95_cap": 41.1,
-    "diesel_cap": 37.16
-  }
+  "next_day": null
 }
