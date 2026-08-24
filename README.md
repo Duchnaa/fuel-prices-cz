@@ -83,7 +83,7 @@ fuel-prices-cz/
 
 ## Zdroj dat
 
-[Ministerstvo financí ČR — Maximální přípustné ceny benzinu a nafty](https://mf.gov.cz/cs/kontrola-a-regulace/cenova-regulace-a-kontrola/maximalni-pripustne-ceny-benzinu-a-nafty)
+MF
 
 ---
 
