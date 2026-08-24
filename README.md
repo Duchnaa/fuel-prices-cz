@@ -2,7 +2,7 @@
 
 Statická webová stránka zobrazující aktuální maximální přípustné ceny benzinu a nafty v České republice stanovené Ministerstvem financí ČR — s automatickou denní aktualizací přes GitHub Actions.
 
-**🌐 Live ukázka:** https://duchnaa.github.io/fuel-prices-cz/
+**🌐 Live ukázka:** ...
 
 ---
 
